@@ -1,0 +1,19 @@
+Meetup
+- What it is: a general events/community platform where people create groups around shared interests, including study groups
+- How it works: someone posts a "Meetup" with a time, location, and description; others RSVP to join
+-Features: RSVP lists, recurring events, discussion boards, web and mobile apps
+
+Dsicord
+- What it is: a chat and voice platform, popular with students for running informal study servers
+- How it works: students join or create a server, then use text/voice channels to coordinate sessions
+- Features: real-time voice/video, text channels, screen sharing, available on web, desktop, and mobile
+
+Nylo (Peer Learning)
+- What it is: a mobile app built specifically for college students to find study groups and peer tutors
+- How it works: students browse groups tied to their courses and join, or connect with a tutor
+- Features: course-based matching, resource sharing, in-app messaging, iOS only
+
+How we differ
+- vs. Meetup: Meetup isn't built for classes. There's no course field, no capacity limit, no way to filter by course and time together. We're built around exact course + time + location + max size
+- vs. Discord: Discord is just chat, no structured way to browse groups. You can't see meeting time, location, or seats left before joining. We show all of that upfront and enforce capacity automatically
+- vs. Nylo: Nylo is mobile-only, has no web version, and no group status system. We're a web app usable on any device, with open/full/completed/cancelled statuses so groups don't go stale
