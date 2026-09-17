@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Create Study Group</title>
+</head>
+
+<body>
+
+    <h1>Create a Study Group</h1>
+    <form method="POST">
+
+        <label for="group_name">Group Name:</label>
+        <input type="text" id="group_name" name="group_name" required>
+
+        <br><br>
+
+        <label for="course_code">Course code:</label>
+        <input type="text" id="course_code" name="course_code" placeholder="Example: CSE 3311" required>
+
+        <br><br>
+
+        <label for="section">Section:</label>
+        <input type="text" id="section" name="section">
+
+        <br><br>
+
+        <label for="description">Description:</label>
+        <textarea id="description" name="description" rows="4" required></textarea>
+
+        <br><br>
+
+        <label>Meeting type:</label>
+
+        <input type="radio" id="in_person" name="meeting_type" value="In-Person" required>
+        <label for="in_person">In-Person</label>
+
+        <input type="radio" id="online" name="meeting_type" value="Online">
+        <label for="online">Online</label>
+
+        <input type="radio" id="hybrid" name="meeting_type" value="Hybrid">
+        <label for="hybrid">Hybrid</label>
+
+        <br><br>
+
+        <label for="meeting_date">Meeting Date:</label>
+        <input type="date" id="meeting_date" name="meeting_date" required>
+
+        <br><br>
+
+        <label for="meeting_time">Meeting Time:</label>
+        <input type="time" id="meeting_time" name="meeting_time" required>
+
+        <br><br>
+
+        <label for="location">Location:</label>
+        <input type="text" id="location" name="location" placeholder="Example: UTA Central Library">
+
+        <br><br>
+
+        <label for="meeting_link">Meeting Link:</label>
+        <input type="url" id="meeting_link" name="meeting_link" placeholder="For online or hybrid groups">
+
+        <br><br>
+
+        <label for="max_members">Maximum Members:</label>
+        <input type="number" id="max_members" name="max_members" min="2" required>
+
+        <br><br>
+
+        <button type="submit">Create Group</button>
+    </form>
+</body>
+</html>
