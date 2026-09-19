@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Study Group Details</title>
+</head>
+<body>
+
+    <h1>{{ group["group_name"] }}</h1>
+
+    <p><strong>Course:</strong> {{ group["course_code"] }}</p>
+
+    <p><strong>Section:</strong> {{ group["section"] }}</p>
+
+    <p><strong>Description:</strong> {{ group["description"] }}</p>
+
+    <p><strong>Meeting Type:</strong> {{ group["meeting_type"] }}</p>
+
+    <p><strong>Date:</strong> {{ group["meeting_date"] }}</p>
+
+    <p><strong>Time:</strong> {{ group["meeting_time"] }}</p>
+
+    {% if group["location"] %}
+        <p><strong>Location:</strong> {{ group["location"] }}</p>
+    {% endif %}
+
+    {% if group["meeting_link"] %}
+        <p>
+            <strong>Meeting Link:</strong>
+            <a href="{{ group['meeting_link'] }}">
+                {{ group["meeting_link"] }}
+            </a>
+        </p>
+    {% endif %}
+
+    <p>
+        <strong>Members:</strong>
+        {{ member_count }} / {{ group["max_members"] }}
+    </p>
+
+    <p><strong>Status:</strong> {{ group["status"] }}</p>
+
+    <form method="POST" action="{{ url_for('join_group', group_id=group['id']) }}">
+        <input type="hidden" name="user_id" value="1">
+        <button type="submit">Join Group</button>
+    </form>
+
+    <form method="POST" action="{{ url_for('leave_group', group_id=group['id']) }}">
+        <input type="hidden" name="user_id" value="1">
+        <button type="submit">Leave Group</button>
+    </form>
+
+</body>
+</html>
