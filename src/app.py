@@ -142,7 +142,190 @@ def create_group():
     
     return render_template("create_group.html")
 
-init_db()
+
+
+@app.route("/group/<int:group_id>")
+def group_details(group_id):
+    conn = sqlite3.connect("study_more.db")
+    conn.row_factory = sqlite3.Row
+
+    group = conn.execute("""
+        SELECT *
+        FROM study_groups
+        WHERE id = ?
+    """, (group_id,)).fetchone()
+
+    if group is None:
+        conn.close()
+        return "Study group not found", 404
+
+    member_count = conn.execute("""
+        SELECT COUNT(*)
+        FROM group_memberships
+        WHERE group_id = ?
+    """, (group_id,)).fetchone()[0]
+
+    conn.close()
+
+    return render_template(
+        "group_details.html",
+        group=group,
+        member_count=member_count
+    )
+
+
+@app.route("/group/<int:group_id>/join", methods=["POST"])
+def join_group(group_id):
+    user_id = request.form.get("user_id")
+
+    if user_id is None:
+        return "Missing user_id", 400
+
+    try:
+        user_id = int(user_id)
+    except (TypeError, ValueError):
+        return "user_id must be a number", 400
+
+    # 1. Connect to DB
+    conn = sqlite3.connect("study_more.db")
+    conn.row_factory = sqlite3.Row
+
+    # 2. Find group
+    group = conn.execute("""
+        SELECT *
+        FROM study_groups
+        WHERE id = ?
+    """, (group_id,)).fetchone()
+
+    # 3. If group doesn't exist -> 404
+    if group is None:
+        conn.close()
+        return "Study group not found", 404
+
+    # 4. Count members
+    member_count = conn.execute("""
+        SELECT COUNT(*)
+        FROM group_memberships
+        WHERE group_id = ?
+    """, (group_id,)).fetchone()[0]
+
+    # 5. Check if user already joined
+    already_joined = conn.execute("""
+        SELECT 1
+        FROM group_memberships
+        WHERE group_id = ? AND user_id = ?
+    """, (group_id, user_id)).fetchone()
+
+    if already_joined is not None:
+        conn.close()
+        return "User already joined this group", 400
+
+    # 6. Check if group is full
+    if member_count >= group["max_members"]:
+        conn.close()
+        return "Study group is full", 400
+
+    # 7. Check status
+    if group["status"] != "open":
+        conn.close()
+        return "Study group is not open", 400
+
+    # 8. INSERT membership
+    conn.execute("""
+        INSERT INTO group_memberships (user_id, group_id)
+        VALUES (?, ?)
+    """, (user_id, group_id))
+
+    # 9. Commit
+    conn.commit()
+
+    # 10. Close DB
+    conn.close()
+
+    # 11. Redirect to group details
+    return redirect(url_for("group_details", group_id=group_id))
+
+
+@app.route("/group/<int:group_id>/leave", methods=["POST"])
+def leave_group(group_id):
+    # 1. Get user_id from the form
+    user_id = request.form.get("user_id")
+
+    # 2. Validate user_id
+    if user_id is None:
+        return "Missing user_id", 400
+
+    try:
+        user_id = int(user_id)
+    except (TypeError, ValueError):
+        return "user_id must be a number", 400
+
+    # 3. Connect to database
+    conn = sqlite3.connect("study_more.db")
+    conn.row_factory = sqlite3.Row
+
+    # 4. Check that the group exists
+    group = conn.execute("""
+        SELECT *
+        FROM study_groups
+        WHERE id = ?
+    """, (group_id,)).fetchone()
+
+    if group is None:
+        conn.close()
+        return "Study group not found", 404
+
+    # 5. Check whether the user is actually a member
+    membership = conn.execute("""
+        SELECT 1
+        FROM group_memberships
+        WHERE group_id = ? AND user_id = ?
+    """, (group_id, user_id)).fetchone()
+
+    # 6. If they aren't a member -> return an error
+    if membership is None:
+        conn.close()
+        return "User is not a member of this group", 400
+
+    # 7. DELETE their membership
+    conn.execute("""
+        DELETE FROM group_memberships
+        WHERE group_id = ? AND user_id = ?
+    """, (group_id, user_id))
+
+    # 8. Commit
+    conn.commit()
+
+    # 9. Close database
+    conn.close()
+
+    # 10. Redirect back to group details
+    return redirect(url_for("group_details", group_id=group_id))
+
+
+
+@app.route("/my-groups", methods=["GET"])
+def my_groups():
+    # For now, hardcode the user
+    user_id = 1
+
+    conn = sqlite3.connect("study_more.db")
+    conn.row_factory = sqlite3.Row
+
+    groups = conn.execute("""
+        SELECT study_groups.*
+        FROM study_groups
+        JOIN group_memberships ON study_groups.id = group_memberships.group_id
+        WHERE group_memberships.user_id = ?
+    """, (user_id,)).fetchall()
+
+    conn.close()
+
+    return render_template("my_groups.html", groups=groups)
+
+
 
 if __name__ == "__main__":
+    init_db()
+    create_test_user()
     app.run(debug=True)
