@@ -4,7 +4,9 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import sqlite3
 
 app = Flask(__name__)
-app.secret_key = "studymore-secret-key-change-later"
+
+import os
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", os.urandom(24))
 
 
 def init_db():
@@ -65,7 +67,7 @@ def create_test_user():
     conn.execute("""
         INSERT OR IGNORE INTO users (name, email, password)
         VALUES (?, ?, ?)
-    """, ("Test User", "test@example.com", "test123"))
+    """, ("Test User", "test@example.com", hashed_password))
 
     conn.commit()
     conn.close()
