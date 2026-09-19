@@ -1,8 +1,12 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, session
+from werkzeug.security import generate_password_hash, check_password_hash
 
 import sqlite3
 
 app = Flask(__name__)
+
+import os
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", os.urandom(24))
 
 
 def init_db():
@@ -58,10 +62,12 @@ def init_db():
 def create_test_user():
     conn = sqlite3.connect("study_more.db")
 
+    hashed_password = generate_password_hash("test123")
+
     conn.execute("""
         INSERT OR IGNORE INTO users (name, email, password)
         VALUES (?, ?, ?)
-    """, ("Test User", "test@example.com", "test123"))
+    """, ("Test User", "test@example.com", hashed_password))
 
     conn.commit()
     conn.close()
@@ -322,6 +328,90 @@ def my_groups():
     conn.close()
 
     return render_template("my_groups.html", groups=groups)
+
+
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        email = request.form.get("email", "").strip().lower()
+        password = request.form.get("password", "").strip()
+        confirm_password = request.form.get("confirm_password", "").strip()
+
+        if not name or not email or not password or not confirm_password:
+            return "Name, email, password, and confirm password are required", 400
+
+        if password != confirm_password:
+            return "Password and confirmation do not match", 400
+
+        conn = sqlite3.connect("study_more.db")
+        conn.row_factory = sqlite3.Row
+
+        existing = conn.execute(
+            "SELECT id FROM users WHERE email = ?", (email,)
+        ).fetchone()
+
+        if existing is not None:
+            conn.close()
+            return "An account with that email already exists", 400
+
+        hashed_password = generate_password_hash(password)
+
+        try:
+            conn.execute(
+                "INSERT INTO users (name, email, password) VALUES (?, ?, ?)",
+                (name, email, hashed_password),
+            )
+        except sqlite3.IntegrityError:
+            conn.rollback()
+            conn.close()
+            return "An account with that email already exists", 400
+
+        conn.commit()
+        conn.close()
+
+        return redirect(url_for("login"))
+
+    return render_template("register.html")
+
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        email = request.form.get("email")
+        password = request.form.get("password")
+
+        if not email or not password:
+            return "Email and password are required", 400
+
+        email = email.strip().lower()
+
+        conn = sqlite3.connect("study_more.db")
+        conn.row_factory = sqlite3.Row
+
+        user = conn.execute(
+            "SELECT * FROM users WHERE email = ?", (email,)
+        ).fetchone()
+        conn.close()
+
+        if user is None or not check_password_hash(user["password"], password):
+            return "Invalid email or password", 400
+
+        session["user_id"] = user["id"]
+        session["user_name"] = user["name"]
+
+        return redirect(url_for("create_group"))
+
+    return render_template("login.html")
+
+
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
 
 
 
