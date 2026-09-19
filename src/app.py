@@ -358,10 +358,16 @@ def register():
 
         hashed_password = generate_password_hash(password)
 
-        conn.execute(
-            "INSERT INTO users (name, email, password) VALUES (?, ?, ?)",
-            (name, email, hashed_password),
-        )
+        try:
+            conn.execute(
+                "INSERT INTO users (name, email, password) VALUES (?, ?, ?)",
+                (name, email, hashed_password),
+            )
+        except sqlite3.IntegrityError:
+            conn.rollback()
+            conn.close()
+            return "An account with that email already exists", 400
+
         conn.commit()
         conn.close()
 
