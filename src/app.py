@@ -332,18 +332,16 @@ def my_groups():
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
-        name = request.form.get("name")
-        email = request.form.get("email")
-        password = request.form.get("password")
-        confirm_password = request.form.get("confirm_password")
+        name = request.form.get("name", "").strip()
+        email = request.form.get("email", "").strip().lower()
+        password = request.form.get("password", "").strip()
+        confirm_password = request.form.get("confirm_password", "").strip()
 
         if not name or not email or not password or not confirm_password:
             return "Name, email, password, and confirm password are required", 400
 
         if password != confirm_password:
             return "Password and confirmation do not match", 400
-
-        email = email.strip().lower()
 
         conn = sqlite3.connect("study_more.db")
         conn.row_factory = sqlite3.Row
