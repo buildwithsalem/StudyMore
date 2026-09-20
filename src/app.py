@@ -7,7 +7,8 @@ app = Flask(__name__)
 
 import os
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", os.urandom(24))
-
+from search import search_bp
+app.register_blueprint(search_bp)
 
 def init_db():
     conn = sqlite3.connect("study_more.db")
