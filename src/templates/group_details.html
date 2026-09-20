@@ -40,15 +40,15 @@
 
     <p><strong>Status:</strong> {{ group["status"] }}</p>
 
-    <form method="POST" action="{{ url_for('join_group', group_id=group['id']) }}">
-        <input type="hidden" name="user_id" value="1">
-        <button type="submit">Join Group</button>
-    </form>
-
+    {% if is_member %}
     <form method="POST" action="{{ url_for('leave_group', group_id=group['id']) }}">
-        <input type="hidden" name="user_id" value="1">
         <button type="submit">Leave Group</button>
     </form>
+    {% else %}
+    <form method="POST" action="{{ url_for('join_group', group_id=group['id']) }}">
+        <button type="submit">Join Group</button>
+    </form>
+    {% endif %}
 
 </body>
 </html>

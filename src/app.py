@@ -152,6 +152,11 @@ def create_group():
 
 @app.route("/group/<int:group_id>")
 def group_details(group_id):
+    user_id = session.get("user_id")
+
+    if user_id is None:
+        return redirect(url_for("login"))
+
     conn = sqlite3.connect("study_more.db")
     conn.row_factory = sqlite3.Row
 
@@ -171,26 +176,30 @@ def group_details(group_id):
         WHERE group_id = ?
     """, (group_id,)).fetchone()[0]
 
+    membership = conn.execute("""
+        SELECT 1
+        FROM group_memberships
+        WHERE group_id = ? AND user_id = ?
+    """, (group_id, user_id)).fetchone()
+
+    is_member = membership is not None
+
     conn.close()
 
     return render_template(
         "group_details.html",
         group=group,
-        member_count=member_count
+        member_count=member_count,
+        is_member=is_member
     )
 
 
 @app.route("/group/<int:group_id>/join", methods=["POST"])
 def join_group(group_id):
-    user_id = request.form.get("user_id")
+    user_id = session.get("user_id")
 
     if user_id is None:
-        return "Missing user_id", 400
-
-    try:
-        user_id = int(user_id)
-    except (TypeError, ValueError):
-        return "user_id must be a number", 400
+        return redirect(url_for("login"))
 
     # 1. Connect to DB
     conn = sqlite3.connect("study_more.db")
@@ -254,17 +263,10 @@ def join_group(group_id):
 
 @app.route("/group/<int:group_id>/leave", methods=["POST"])
 def leave_group(group_id):
-    # 1. Get user_id from the form
-    user_id = request.form.get("user_id")
+    user_id = session.get("user_id")
 
-    # 2. Validate user_id
     if user_id is None:
-        return "Missing user_id", 400
-
-    try:
-        user_id = int(user_id)
-    except (TypeError, ValueError):
-        return "user_id must be a number", 400
+        return redirect(url_for("login"))
 
     # 3. Connect to database
     conn = sqlite3.connect("study_more.db")
@@ -312,8 +314,10 @@ def leave_group(group_id):
 
 @app.route("/my-groups", methods=["GET"])
 def my_groups():
-    # For now, hardcode the user
-    user_id = 1
+    user_id = session.get("user_id")
+
+    if user_id is None:
+        return redirect(url_for("login"))
 
     conn = sqlite3.connect("study_more.db")
     conn.row_factory = sqlite3.Row
