@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, session
 from werkzeug.security import generate_password_hash, check_password_hash
+from search import search_bp
 
 import sqlite3
 
@@ -7,8 +8,8 @@ app = Flask(__name__)
 
 import os
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", os.urandom(24))
-from search import search_bp
 app.register_blueprint(search_bp)
+
 
 def init_db():
     conn = sqlite3.connect("study_more.db")
@@ -76,6 +77,7 @@ def create_test_user():
 
 
 @app.route("/", methods=["GET", "POST"])
+@app.route("/create-group", methods=["GET", "POST"])
 def create_group():
     if request.method == "POST":
         group_name = request.form.get("group_name")
@@ -318,7 +320,7 @@ def my_groups():
     user_id = session.get("user_id")
 
     if user_id is None:
-        return redirect(url_for("login"))
+        return redirect(url_for("login"))   
 
     conn = sqlite3.connect("study_more.db")
     conn.row_factory = sqlite3.Row
