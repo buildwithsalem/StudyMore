@@ -1,2 +1,4 @@
 study_more.db
 app copy.py
+__pycache__/
+*.pyc
