@@ -1,149 +1,126 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Search Study Groups | StudyMore</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <title>Search Study Groups</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
+
 <body>
 
-<header class="topbar">
-  <span class="brand">StudyMore</span>
-  <nav>
-    <a href="{{ url_for('search.search') }}" class="active">Search Groups</a>
-    <a href="{{ url_for('create_group') }}">Create Group</a>
-    <a href="{{ url_for('my_groups') }}">My Groups</a>
-    <a href="{{ url_for('logout') }}">Log Out</a>
-  </nav>
-</header>
-
-<main>
-  <h1>Search Study Groups</h1>
-
-  <!-- GET so a search can be bookmarked. Fields are refilled from `filters`. -->
-  <form class="search-form" method="get" action="{{ url_for('search.search') }}">
-
-    <div class="search-row">
-      <label class="grow">
-        <span>Search</span>
-        <input type="text" name="term" maxlength="100"
-               placeholder="Course code, group name, or topic"
-               value="{{ filters.term }}">
-      </label>
-      <button type="submit" class="primary">Search</button>
-    </div>
-
-    <fieldset class="filters">
-      <legend>Filters</legend>
-
-      <label>
-        <span>Course code</span>
-        <input type="text" name="course_code" placeholder="CSE 3311"
-               value="{{ filters.course_code }}">
-      </label>
-
-      <label>
-        <span>Section</span>
-        <input type="text" name="section" placeholder="001"
-               value="{{ filters.section }}">
-      </label>
-
-      <label>
-        <span>Meeting type</span>
-        <select name="meeting_type">
-          <option value="">Any</option>
-          {% for option in meeting_types %}
-            <option value="{{ option }}" {% if filters.meeting_type == option %}selected{% endif %}>{{ option }}</option>
-          {% endfor %}
-        </select>
-      </label>
-
-      <label>
-        <span>Group status</span>
-        <select name="status">
-          <option value="">Any</option>
-          {% for option in group_statuses %}
-            <option value="{{ option }}" {% if filters.status == option %}selected{% endif %}>{{ option }}</option>
-          {% endfor %}
-        </select>
-      </label>
-
-      <label class="checkbox">
-        <input type="checkbox" name="available_only" value="on"
-               {% if filters.available_only %}checked{% endif %}>
-        <span>Available groups only</span>
-      </label>
-
-      <a class="clear" href="{{ url_for('search.search') }}">Clear filters</a>
-    </fieldset>
-  </form>
-
-  {% if error %}
-    <p class="message error" role="alert">{{ error }}</p>
-  {% endif %}
-
-  {% if notice %}
-    <p class="message notice">{{ notice }}</p>
-  {% endif %}
-
-  {% if not error %}
-    <p class="result-count">
-      {{ results|length }} study group{{ '' if results|length == 1 else 's' }} found
+    <!-- links to the other pages -->
+    <p>
+        <a href="{{ url_for('search.search') }}">Search Groups</a> |
+        <a href="{{ url_for('create_group') }}">Create Group</a> |
+        <a href="{{ url_for('my_groups') }}">My Groups</a> |
+        <a href="{{ url_for('logout') }}">Log Out</a>
     </p>
-  {% endif %}
 
-  <section class="results">
-    {% for group in results %}
-      <article class="group-card {{ 'unavailable' if not group.is_joinable else '' }}">
+    <h1>Search Study Groups</h1>
 
-        <div class="card-head">
-          <h2>{{ group.group_name }}</h2>
-          <span class="status status-{{ group.status|lower }}">{{ group.status }}</span>
-        </div>
+    <!-- GET so the search stays in the url, filters get filled back in from the last search -->
+    <form method="GET" action="{{ url_for('search.search') }}">
 
-        <p class="course">
-          {{ group.course_code }}{% if group.section %} &middot; Section {{ group.section }}{% endif %}
-        </p>
+        <label for="term">Search:</label>
+        <input type="text" id="term" name="term" size="40" maxlength="100" placeholder="Course code, group name, or topic" value="{{ filters.term }}">
 
-        {% if group.description %}
-          <p class="description">{{ group.description }}</p>
-        {% endif %}
+        <button type="submit">Search</button>
 
-        <dl class="details">
-          <div><dt>Meets</dt><dd>{{ group.meeting_date }} at {{ group.meeting_time }}</dd></div>
-          <div><dt>Type</dt><dd>{{ group.meeting_type }}</dd></div>
-          <div><dt>Where</dt><dd>{{ group.location_display }}</dd></div>
-          <div><dt>Members</dt><dd>{{ group.current_members }} of {{ group.max_members }}</dd></div>
-        </dl>
+        <br><br>
 
-        <div class="card-actions">
-          <a class="secondary" href="{{ url_for('group_details', group_id=group.group_id) }}">View Details</a>
+        <!-- filters all on one line -->
+        <label for="course_code">Course code:</label>
+        <input type="text" id="course_code" name="course_code" size="10" placeholder="CSE 3311" value="{{ filters.course_code }}">
 
-          {% if group.already_joined %}
-            <span class="joined">Joined</span>
-          {% elif group.is_joinable %}
-            <form method="post" action="{{ url_for('join_group', group_id=group.group_id) }}">
-              <input type="hidden" name="user_id" value="{{ user_id }}">
-              <button type="submit" class="primary">Join Group</button>
-            </form>
-          {% else %}
-            <button type="button" class="primary" disabled>Join Group</button>
-            <span class="blocked">{{ group.join_blocked_reason }}</span>
-          {% endif %}
-        </div>
+        <label for="section">Section:</label>
+        <input type="text" id="section" name="section" size="5" placeholder="001" value="{{ filters.section }}">
 
-      </article>
-    {% endfor %}
-  </section>
+        <label for="meeting_type">Meeting type:</label>
+        <select id="meeting_type" name="meeting_type">
+            <option value="">Any</option>
+            {% for option in meeting_types %}
+            <option value="{{ option }}" {% if filters.meeting_type == option %}selected{% endif %}>{{ option }}</option>
+            {% endfor %}
+        </select>
 
-  {% if not results and not error %}
-    <div class="empty-state">
-      <p>Nothing here yet for this search.</p>
-      <a class="primary" href="{{ url_for('create_group') }}">Create a Study Group</a>
-    </div>
-  {% endif %}
-</main>
+        <label for="status">Status:</label>
+        <select id="status" name="status">
+            <option value="">Any</option>
+            {% for option in group_statuses %}
+            <option value="{{ option }}" {% if filters.status == option %}selected{% endif %}>{{ option }}</option>
+            {% endfor %}
+        </select>
+
+        <input type="checkbox" id="available_only" name="available_only" value="on" {% if filters.available_only %}checked{% endif %}>
+        <label for="available_only">Available groups only</label>
+
+        <br><br>
+
+        <a href="{{ url_for('search.search') }}">Clear filters</a>
+
+    </form>
+
+    {% if error %}
+    <p><b>{{ error }}</b></p>
+    {% endif %}
+
+    {% if notice %}
+    <p>{{ notice }}</p>
+    {% endif %}
+
+    {% if not error %}
+    <p>{{ results|length }} study group{{ '' if results|length == 1 else 's' }} found</p>
+    {% endif %}
+
+    <!-- results table, last column is for view details and the join button -->
+    {% if results %}
+    <table>
+        <tr>
+            <th>Group</th>
+            <th>Course</th>
+            <th>Section</th>
+            <th>Description</th>
+            <th>Meets</th>
+            <th>Type</th>
+            <th>Location</th>
+            <th>Members</th>
+            <th>Status</th>
+            <th></th>
+        </tr>
+        {% for group in results %}
+        <tr>
+            <td>{{ group.group_name }}</td>
+            <td>{{ group.course_code }}</td>
+            <td>{{ group.section }}</td>
+            <td>{{ group.description }}</td>
+            <td>{{ group.meeting_date }} at {{ group.meeting_time }}</td>
+            <td>{{ group.meeting_type }}</td>
+            <td>{{ group.location_display }}</td>
+            <td>{{ group.current_members }} of {{ group.max_members }}</td>
+            <td>{{ group.status }}</td>
+            <td>
+                <a href="{{ url_for('group_details', group_id=group.group_id) }}">View Details</a>
+                <br>
+                {% if group.already_joined %}
+                Joined
+                {% elif group.is_joinable %}
+                <form method="POST" action="{{ url_for('join_group', group_id=group.group_id) }}">
+                    <input type="hidden" name="user_id" value="{{ user_id }}">
+                    <button type="submit">Join Group</button>
+                </form>
+                {% else %}
+                <button type="button" disabled>Join Group</button>
+                {{ group.join_blocked_reason }}
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% endif %}
+
+    <!-- nothing found, point them to create a group instead -->
+    {% if not results and not error %}
+    <p>You can also <a href="{{ url_for('create_group') }}">create a new study group</a>.</p>
+    {% endif %}
 
 </body>
 </html>
