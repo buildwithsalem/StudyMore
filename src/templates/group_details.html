@@ -2,53 +2,136 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Study Group Details</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ group["group_name"] }} | StudyMore</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
+
 <body>
 
-    <h1>{{ group["group_name"] }}</h1>
+<header class="topbar">
+    <span class="brand">StudyMore</span>
 
-    <p><strong>Course:</strong> {{ group["course_code"] }}</p>
+    <nav>
+        <a href="{{ url_for('search.search') }}">Search Groups</a>
+        <a href="{{ url_for('create_group') }}">Create Group</a>
+        <a href="{{ url_for('my_groups') }}">My Groups</a>
+        <a href="{{ url_for('logout') }}">Log Out</a>
+    </nav>
+</header>
 
-    <p><strong>Section:</strong> {{ group["section"] }}</p>
+<main class="details-main">
 
-    <p><strong>Description:</strong> {{ group["description"] }}</p>
+    <a class="back-link" href="{{ url_for('search.search') }}">
+        ← Back to Search Groups
+    </a>
 
-    <p><strong>Meeting Type:</strong> {{ group["meeting_type"] }}</p>
+    <article class="details-card">
 
-    <p><strong>Date:</strong> {{ group["meeting_date"] }}</p>
+        <div class="details-header">
+            <div>
+                <h1>{{ group["group_name"] }}</h1>
 
-    <p><strong>Time:</strong> {{ group["meeting_time"] }}</p>
+                <p class="course">
+                    {{ group["course_code"] }}
+                    {% if group["section"] %}
+                        &middot; Section {{ group["section"] }}
+                    {% endif %}
+                </p>
+            </div>
 
-    {% if group["location"] %}
-        <p><strong>Location:</strong> {{ group["location"] }}</p>
-    {% endif %}
+            <span class="status status-{{ group['status']|lower }}">
+                {{ group["status"] }}
+            </span>
+        </div>
 
-    {% if group["meeting_link"] %}
-        <p>
-            <strong>Meeting Link:</strong>
-            <a href="{{ group['meeting_link'] }}">
-                {{ group["meeting_link"] }}
-            </a>
-        </p>
-    {% endif %}
+        {% if group["description"] %}
+            <div class="details-description">
+                <h2>About this group</h2>
+                <p>{{ group["description"] }}</p>
+            </div>
+        {% endif %}
 
-    <p>
-        <strong>Members:</strong>
-        {{ member_count }} / {{ group["max_members"] }}
-    </p>
+        <div class="group-info-grid">
 
-    <p><strong>Status:</strong> {{ group["status"] }}</p>
+            <div class="info-item">
+                <span class="info-label">Meeting Type</span>
+                <span class="info-value">{{ group["meeting_type"] }}</span>
+            </div>
 
-    {% if is_member %}
-    <form method="POST" action="{{ url_for('leave_group', group_id=group['id']) }}">
-        <button type="submit">Leave Group</button>
-    </form>
-    {% else %}
-    <form method="POST" action="{{ url_for('join_group', group_id=group['id']) }}">
-        <button type="submit">Join Group</button>
-    </form>
-    {% endif %}
+            <div class="info-item">
+                <span class="info-label">Date</span>
+                <span class="info-value">{{ group["meeting_date"] }}</span>
+            </div>
+
+            <div class="info-item">
+                <span class="info-label">Time</span>
+                <span class="info-value">{{ group["meeting_time"] }}</span>
+            </div>
+
+            <div class="info-item">
+                <span class="info-label">Members</span>
+                <span class="info-value">
+                    {{ member_count }} of {{ group["max_members"] }}
+                </span>
+            </div>
+
+            {% if group["location"] %}
+                <div class="info-item">
+                    <span class="info-label">Location</span>
+                    <span class="info-value">{{ group["location"] }}</span>
+                </div>
+            {% endif %}
+
+            {% if group["meeting_link"] %}
+                <div class="info-item">
+                    <span class="info-label">Meeting Link</span>
+                    <a
+                        class="meeting-link"
+                        href="{{ group['meeting_link'] }}"
+                        target="_blank"
+                        rel="noopener noreferrer">
+                        Open meeting link
+                    </a>
+                </div>
+            {% endif %}
+
+        </div>
+
+        <div class="details-actions">
+
+            {% if is_member %}
+                <div>
+                    <span class="membership-note">✓ You joined this group</span>
+
+                    <form
+                        method="POST"
+                        action="{{ url_for('leave_group', group_id=group['id']) }}">
+
+                        <button type="submit" class="danger-button">
+                            Leave Group
+                        </button>
+                    </form>
+                </div>
+
+            {% else %}
+
+                <form
+                    method="POST"
+                    action="{{ url_for('join_group', group_id=group['id']) }}">
+
+                    <button type="submit" class="primary">
+                        Join Group
+                    </button>
+                </form>
+
+            {% endif %}
+
+        </div>
+
+    </article>
+
+</main>
 
 </body>
 </html>

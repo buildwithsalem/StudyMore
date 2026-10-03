@@ -1,73 +1,203 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Create Study Group</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Create Study Group | StudyMore</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 
 <body>
 
-    <h1>Create a Study Group</h1>
-    <form method="POST">
+<header class="topbar">
+    <span class="brand">StudyMore</span>
 
-        <label for="group_name">Group Name:</label>
-        <input type="text" id="group_name" name="group_name" required>
+    <nav>
+        <a href="{{ url_for('search.search') }}">Search Groups</a>
+        <a href="{{ url_for('create_group') }}" class="active">Create Group</a>
+        <a href="{{ url_for('my_groups') }}">My Groups</a>
+        <a href="{{ url_for('logout') }}">Log Out</a>
+    </nav>
+</header>
 
-        <br><br>
+<main class="create-main">
 
-        <label for="course_code">Course code:</label>
-        <input type="text" id="course_code" name="course_code" placeholder="Example: CSE 3311" required>
+    <div class="page-heading">
+        <h1>Create a Study Group</h1>
+        <p>Add the details students need to find and join your study group.</p>
+    </div>
+    {% if error %}
+    <div class="message error" role="alert">
+        {{ error }}
+    </div>
+{% endif %}
 
-        <br><br>
+    <form method="POST" class="create-form">
 
-        <label for="section">Section:</label>
-        <input type="text" id="section" name="section">
+        <div class="form-section">
+            <h2>Group Information</h2>
 
-        <br><br>
+            <label for="group_name">
+                <span>Group Name <span class="required">*</span></span>
+                <input
+                    type="text"
+                    id="group_name"
+                    name="group_name"
+                    placeholder="Example: CSE 3311 Exam Study Group"
+                    value="{{ form.get('group_name', '') if form else '' }}"
+                    required>
+            </label>
 
-        <label for="description">Description:</label>
-        <textarea id="description" name="description" rows="4" required></textarea>
+            <div class="form-grid">
+                <label for="course_code">
+                    <span>Course Code <span class="required">*</span></span>
+                    <input
+                        type="text"
+                        id="course_code"
+                        name="course_code"
+                        placeholder="Example: CSE 3311"
+                        value="{{ form.get('course_code', '') if form else '' }}"
+                        required>
+                </label>
 
-        <br><br>
+                <label for="section">
+                    <span>Section <span class="optional">(optional)</span></span>
+                    <input
+                        type="text"
+                        id="section"
+                        name="section"
+                        placeholder="Example: 001"
+                        value="{{ form.get('section', '') if form else '' }}">
+                </label>
+            </div>
 
-        <label>Meeting type:</label>
+            <label for="description">
+                <span>Description <span class="required">*</span></span>
+                <textarea
+                    id="description"
+                    name="description"
+                    rows="4"
+                    placeholder="Describe what your group plans to study."
+                    required>{{ form.get('description', '') if form else '' }}</textarea>
+            </label>
+        </div>
 
-        <input type="radio" id="in_person" name="meeting_type" value="In-Person" required>
-        <label for="in_person">In-Person</label>
 
-        <input type="radio" id="online" name="meeting_type" value="Online">
-        <label for="online">Online</label>
+        <div class="form-section">
+            <h2>Meeting Details</h2>
 
-        <input type="radio" id="hybrid" name="meeting_type" value="Hybrid">
-        <label for="hybrid">Hybrid</label>
+            <fieldset class="meeting-options">
+                <legend>
+                    Meeting Type <span class="required">*</span>
+                </legend>
 
-        <br><br>
+                <label class="radio-option">
+                    <input
+                        type="radio"
+                        id="in_person"
+                        name="meeting_type"
+                        value="In-Person"
+                        {% if form and form.get('meeting_type') == 'In-Person' %}checked{% endif %}
+                        required>
+                    <span>In-Person</span>
+                </label>
 
-        <label for="meeting_date">Meeting Date:</label>
-        <input type="date" id="meeting_date" name="meeting_date" required>
+                <label class="radio-option">
+                    <input
+                        type="radio"
+                        id="online"
+                        name="meeting_type"
+                        value="Online"
+                        {% if form and form.get('meeting_type') == 'Online' %}checked{% endif %}>
+                    <span>Online</span>
+                </label>
 
-        <br><br>
+                <label class="radio-option">
+                    <input
+                        type="radio"
+                        id="hybrid"
+                        name="meeting_type"
+                        value="Hybrid"
+                        {% if form and form.get('meeting_type') == 'Hybrid' %}checked{% endif %}>
+                    <span>Hybrid</span>
+                </label>
+            </fieldset>
 
-        <label for="meeting_time">Meeting Time:</label>
-        <input type="time" id="meeting_time" name="meeting_time" required>
+            <div class="form-grid">
+                <label for="meeting_date">
+                    <span>Meeting Date <span class="required">*</span></span>
+                    <input
+                        type="date"
+                        id="meeting_date"
+                        name="meeting_date"
+                        value="{{ form.get('meeting_date', '') if form else '' }}"
+                        required>
+                </label>
 
-        <br><br>
+                <label for="meeting_time">
+                    <span>Meeting Time <span class="required">*</span></span>
+                    <input
+                        type="time"
+                        id="meeting_time"
+                        name="meeting_time"
+                        value="{{ form.get('meeting_time', '') if form else '' }}"
+                        required>
+                </label>
+            </div>
 
-        <label for="location">Location:</label>
-        <input type="text" id="location" name="location" placeholder="Example: UTA Central Library">
+            <div class="form-grid">
+                <label for="location">
+                    <span>
+                        Location
+                        <span class="conditional">Required for In-Person & Hybrid</span>
+                    </span>
+                    <input
+                        type="text"
+                        id="location"
+                        name="location"
+                        placeholder="Example: UTA Central Library"
+                        value="{{ form.get('location', '') if form else '' }}">
+                </label>
 
-        <br><br>
+                <label for="meeting_link">
+                    <span>
+                        Meeting Link
+                        <span class="conditional">Required for Online & Hybrid</span>
+                    </span>
+                    <input
+                        type="url"
+                        id="meeting_link"
+                        name="meeting_link"
+                        placeholder="Example: Teams or Zoom link"
+                        value="{{ form.get('meeting_link', '') if form else '' }}">
+                </label>
+            </div>
 
-        <label for="meeting_link">Meeting Link:</label>
-        <input type="url" id="meeting_link" name="meeting_link" placeholder="For online or hybrid groups">
+            <label for="max_members">
+                <span>Maximum Members <span class="required">*</span></span>
+                <input
+                    type="number"
+                    id="max_members"
+                    name="max_members"
+                    min="2"
+                    placeholder="Minimum 2"
+                    value="{{ form.get('max_members', '') if form else '' }}"
+                    required>
+            </label>
 
-        <br><br>
+        </div>
 
-        <label for="max_members">Maximum Members:</label>
-        <input type="number" id="max_members" name="max_members" min="2" required>
+        <p class="required-note">
+            <span class="required">*</span> Required fields
+        </p>
 
-        <br><br>
+        <button type="submit" class="primary create-button">
+            Create Group
+        </button>
 
-        <button type="submit">Create Group</button>
     </form>
+
+</main>
+
 </body>
 </html>

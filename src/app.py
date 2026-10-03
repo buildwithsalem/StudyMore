@@ -105,11 +105,25 @@ def create_group():
         if max_members < 2:
             return "Max members must be at least 2", 400
         if meeting_type == "In-Person" and not location.strip():
-            return "Location is required for in-person groups", 400
+            return render_template(
+                "create_group.html",
+                error="Location is required for in-person groups.",
+                form=request.form
+            )
+
         if meeting_type == "Online" and not meeting_link.strip():
-                    return "Meeting link is required for online groups", 400
+            return render_template(
+                "create_group.html",
+                error="Meeting link is required for online groups.",
+                form=request.form
+            )
+
         if meeting_type == "Hybrid" and (not location.strip() or not meeting_link.strip()):
-                            return "Location and meeting link are required for hybrid groups", 400
+            return render_template(
+                "create_group.html",
+                error="Location and meeting link are required for hybrid groups.",
+                form=request.form
+            )
         
         
         connection = sqlite3.connect("study_more.db")
@@ -298,7 +312,7 @@ def leave_group(group_id):
         conn.close()
         return "User is not a member of this group", 400
 
-    # 7. DELETE their membership
+    # 7. delete their membership
     conn.execute("""
         DELETE FROM group_memberships
         WHERE group_id = ? AND user_id = ?
@@ -310,9 +324,11 @@ def leave_group(group_id):
     # 9. Close database
     conn.close()
 
-    # 10. Redirect back to group details
-    return redirect(url_for("group_details", group_id=group_id))
+    # 10. Redirect based on where the user left the group
+    if request.form.get("next") == "my_groups":
+      return redirect(url_for("my_groups"))
 
+    return redirect(url_for("group_details", group_id=group_id))
 
 
 @app.route("/my-groups", methods=["GET"])
