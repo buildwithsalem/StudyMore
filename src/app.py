@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, session
 from werkzeug.security import generate_password_hash, check_password_hash
 from search import search_bp
+from dashboard import dashboard_bp
 
 import sqlite3
 
@@ -9,6 +10,7 @@ app = Flask(__name__)
 import os
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", os.urandom(24))
 app.register_blueprint(search_bp)
+app.register_blueprint(dashboard_bp)
 
 
 def init_db():
@@ -76,7 +78,13 @@ def create_test_user():
 
 
 
-@app.route("/", methods=["GET", "POST"])
+@app.route("/")
+def index():
+    if session.get("user_id"):
+        return redirect(url_for("dashboard.dashboard"))
+    return redirect(url_for("login"))
+
+
 @app.route("/create-group", methods=["GET", "POST"])
 def create_group():
     if request.method == "POST":
@@ -409,7 +417,7 @@ def login():
         session["user_id"] = user["id"]
         session["user_name"] = user["name"]
 
-        return redirect(url_for("create_group"))
+        return redirect(url_for("dashboard.dashboard"))
 
     return render_template("login.html")
 

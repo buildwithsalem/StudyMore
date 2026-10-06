@@ -11,6 +11,7 @@
 <header class="topbar">
   <span class="brand">StudyMore</span>
   <nav>
+    <a href="{{ url_for('dashboard.dashboard') }}">Dashboard</a>
     <a href="{{ url_for('search.search') }}" class="active">Search Groups</a>
     <a href="{{ url_for('create_group') }}">Create Group</a>
     <a href="{{ url_for('my_groups') }}">My Groups</a>
