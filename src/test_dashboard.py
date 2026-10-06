@@ -249,30 +249,16 @@ class UpcomingMeetingsFilteringTests(DashboardTestCase):
 
 class ActiveStudyRequestsFilteringTests(DashboardTestCase):
 
-    def setUp(self):
-        super().setUp()
-        self.conn.execute("""
-            CREATE TABLE IF NOT EXISTS study_requests (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
-                course_code TEXT NOT NULL,
-                topic TEXT,
-                preferred_meeting_type TEXT,
-                preferred_time TEXT,
-                status TEXT DEFAULT 'open'
-            )
-        """)
-
     def test_active_study_requests_appear(self):
         """Active requests with status 'open', 'active', 'pending' must appear."""
         self.conn.execute("""
-            INSERT INTO study_requests (user_id, course_code, topic, status)
-            VALUES (?, ?, ?, ?)
-        """, (1, "CSE 3311", "Need help with design patterns", "open"))
+            INSERT INTO study_requests (user_id, course_code, section, study_goal, meeting_preference, note, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (1, "CSE 3311", "001", "Need help with design patterns", "In-Person", "Weekly meetings", "open"))
         self.conn.execute("""
-            INSERT INTO study_requests (user_id, course_code, topic, status)
-            VALUES (?, ?, ?, ?)
-        """, (1, "CSE 3320", "OS Virtual Memory study partner", "pending"))
+            INSERT INTO study_requests (user_id, course_code, section, study_goal, meeting_preference, note, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (1, "CSE 3320", "002", "OS Virtual Memory study partner", "Online", "Discord study", "active"))
         self.conn.commit()
 
         requests = get_user_study_requests(self.conn, user_id=1)
@@ -290,21 +276,21 @@ class ActiveStudyRequestsFilteringTests(DashboardTestCase):
     def test_inactive_completed_cancelled_requests_do_not_appear(self):
         """Inactive, completed, cancelled, closed, fulfilled requests must NOT appear in Active Study Requests."""
         self.conn.execute("""
-            INSERT INTO study_requests (user_id, course_code, topic, status)
-            VALUES (?, ?, ?, ?)
-        """, (1, "MATH 1426", "Old Calculus Request", "completed"))
+            INSERT INTO study_requests (user_id, course_code, section, study_goal, meeting_preference, note, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (1, "MATH 1426", "004", "Old Calculus Request", "Hybrid", "Done", "completed"))
         self.conn.execute("""
-            INSERT INTO study_requests (user_id, course_code, topic, status)
-            VALUES (?, ?, ?, ?)
-        """, (1, "CSE 1320", "Cancelled C Programming Request", "cancelled"))
+            INSERT INTO study_requests (user_id, course_code, section, study_goal, meeting_preference, note, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (1, "CSE 1320", "001", "Cancelled C Programming Request", "Online", "N/A", "cancelled"))
         self.conn.execute("""
-            INSERT INTO study_requests (user_id, course_code, topic, status)
-            VALUES (?, ?, ?, ?)
-        """, (1, "PHYS 1443", "Inactive Physics Request", "inactive"))
+            INSERT INTO study_requests (user_id, course_code, section, study_goal, meeting_preference, note, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (1, "PHYS 1443", "002", "Inactive Physics Request", "In-Person", "N/A", "inactive"))
         self.conn.execute("""
-            INSERT INTO study_requests (user_id, course_code, topic, status)
-            VALUES (?, ?, ?, ?)
-        """, (1, "CSE 3315", "Closed Theory Request", "closed"))
+            INSERT INTO study_requests (user_id, course_code, section, study_goal, meeting_preference, note, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (1, "CSE 3315", "001", "Closed Theory Request", "Online", "N/A", "closed"))
         self.conn.commit()
 
         requests = get_user_study_requests(self.conn, user_id=1)

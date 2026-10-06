@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Create Study Request | StudyMore</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+
+<header class="topbar">
+    <span class="brand">StudyMore</span>
+
+    <nav>
+        <a href="{{ url_for('search.search') }}">Search Groups</a>
+        <a href="{{ url_for('create_group') }}">Create Group</a>
+        <a href="{{ url_for('my_groups') }}">My Groups</a>
+        <a class="active" href="{{ url_for('study_request') }}">Find My Match</a>
+        <a href="{{ url_for('availability') }}">Availability</a>
+        <a href="{{ url_for('logout') }}">Log Out</a>
+    </nav>
+</header>
+
+<main class="create-main">
+
+    <div class="page-heading">
+        <h1>Create a Study Request</h1>
+        <p>
+            Can't find the right study group? Tell StudyMore what you're
+            looking for and we'll help identify compatible study partners.
+        </p>
+    </div>
+
+    {% if error %}
+        <div class="message error">{{ error }}</div>
+    {% endif %}
+
+    <form method="POST" class="create-form">
+
+        <section class="form-section">
+
+            <h2>What are you studying?</h2>
+
+            <div class="form-grid">
+
+                <label>
+                    <span>Course Code <span class="required">*</span></span>
+                    <input
+                        type="text"
+                        name="course_code"
+                        placeholder="Example: CSE 3311"
+                        value="{{ form.get('course_code', '') }}"
+                        required>
+                </label>
+
+                <label>
+                    <span>
+                        Section
+                        <span class="optional">(optional)</span>
+                    </span>
+                    <input
+                        type="text"
+                        name="section"
+                        placeholder="Example: 001"
+                        value="{{ form.get('section', '') }}">
+                </label>
+
+            </div>
+
+            <label>
+                <span>Study Goal <span class="required">*</span></span>
+
+                <select name="study_goal" required>
+                    <option value="">Select a study goal</option>
+
+                    {% for goal in study_goals %}
+                        <option
+                            value="{{ goal }}"
+                            {% if form.get('study_goal') == goal %}selected{% endif %}
+                        >
+                            {{ goal }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </label>
+
+        </section>
+
+        <section class="form-section">
+
+            <h2>Study Preferences</h2>
+
+            <fieldset class="meeting-options">
+                <legend>
+                    Meeting Preference <span class="required">*</span>
+                </legend>
+
+                {% for preference in meeting_preferences %}
+
+                    <label class="radio-option">
+                        <input
+                            type="radio"
+                            name="meeting_preference"
+                            value="{{ preference }}"
+                            {% if form.get('meeting_preference') == preference %}checked{% endif %}
+                            required>
+                        <span>{{ preference }}</span>
+                    </label>
+
+                {% endfor %}
+
+            </fieldset>
+
+            <label>
+                <span>
+                    Note
+                    <span class="optional">(optional)</span>
+                </span>
+
+                <textarea
+                    name="note"
+                    placeholder="Example: Looking to review automata before Exam 2."
+                >{{ form.get('note', '') }}</textarea>
+            </label>
+
+        </section>
+
+        <section class="form-section request-availability-summary">
+
+            <div>
+                <h2>Your Availability</h2>
+                <p>
+                    StudyMore will use the weekly availability you saved
+                    to find students with overlapping study times.
+                </p>
+            </div>
+
+            {% if availability_count > 0 %}
+                <div class="availability-ready">
+                    ✓ {{ availability_count }} time blocks selected
+                </div>
+
+                <a href="{{ url_for('availability') }}" class="secondary">
+                    Update Availability
+                </a>
+            {% else %}
+                <div class="message notice">
+                    You haven't added your weekly availability yet.
+                </div>
+
+                <a href="{{ url_for('availability') }}" class="secondary">
+                    Add Availability
+                </a>
+            {% endif %}
+
+        </section>
+
+        <div class="request-actions">
+            <button type="submit" class="primary">
+                Find My Study Matches
+            </button>
+
+            <span class="availability-save-note">
+                Your request will remain active until you close it.
+            </span>
+        </div>
+
+    </form>
+
+</main>
+
+</body>
+</html>

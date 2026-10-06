@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>My Availability | StudyMore</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+
+<header class="topbar">
+    <span class="brand">StudyMore</span>
+
+    <nav>
+        <a href="{{ url_for('search.search') }}">Search Groups</a>
+        <a href="{{ url_for('create_group') }}">Create Group</a>
+        <a href="{{ url_for('my_groups') }}">My Groups</a>
+        <a href="{{ url_for('study_request') }}">Find My Match</a>
+        <a class="active" href="{{ url_for('availability') }}">Availability</a>
+        <a href="{{ url_for('logout') }}">Log Out</a>
+    </nav>
+</header>
+
+<main class="availability-main">
+
+    <div class="page-heading">
+        <h1>My Availability</h1>
+        <p>
+            Select the times you are usually available to study.
+            Your availability helps StudyMore find better study matches
+            and identify the best meeting times.
+        </p>
+    </div>
+
+    {% if message %}
+        <div class="message notice">{{ message }}</div>
+    {% endif %}
+
+    <form method="POST" class="availability-form">
+
+        <div class="availability-card">
+
+            <div class="availability-instructions">
+                <div>
+                    <h2>Weekly Availability</h2>
+                    <p>Click each time block when you are available.</p>
+                </div>
+
+                <div class="availability-legend">
+                    <span class="legend-box"></span>
+                    Available
+                </div>
+            </div>
+
+            <div class="availability-scroll">
+                <div class="availability-grid">
+
+                    <div class="grid-header time-header">Time</div>
+
+                    {% for day in days %}
+                        <div class="grid-header">{{ day }}</div>
+                    {% endfor %}
+
+                    {% for slot in time_slots %}
+
+                        <div class="time-label">
+                            {{ slot.label }}
+                        </div>
+
+                        {% for day in days %}
+
+                            {% set slot_value = day ~ '|' ~ slot.start ~ '|' ~ slot.end %}
+
+                            <label class="availability-slot">
+                                <input
+                                    type="checkbox"
+                                    name="availability"
+                                    value="{{ slot_value }}"
+                                    {% if slot_value in selected_slots %}checked{% endif %}
+                                >
+                                <span></span>
+                            </label>
+
+                        {% endfor %}
+
+                    {% endfor %}
+
+                </div>
+            </div>
+
+        </div>
+
+        <div class="availability-actions">
+            <button type="submit" class="primary">
+                Save Availability
+            </button>
+
+            <span class="availability-save-note">
+                You can update your schedule anytime.
+            </span>
+        </div>
+
+    </form>
+
+</main>
+
+</body>
+</html>

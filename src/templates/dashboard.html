@@ -15,6 +15,8 @@
     <a href="{{ url_for('search.search') }}">Search Groups</a>
     <a href="{{ url_for('create_group') }}">Create Group</a>
     <a href="{{ url_for('my_groups') }}">My Groups</a>
+    <a href="{{ url_for('study_request') }}">Find My Match</a>
+    <a href="{{ url_for('availability') }}">Availability</a>
     <a href="{{ url_for('logout') }}">Log Out</a>
   </nav>
 </header>
@@ -206,13 +208,13 @@
               <h3>{{ req.course_code }} Study Request</h3>
               <span class="status status-open">{{ req.status or 'Active' }}</span>
             </div>
-            <p class="description">{{ req.topic or req.description or 'Looking for study partners.' }}</p>
+            <p class="description">{{ req.study_goal or req.topic or req.note or req.description or 'Looking for study partners.' }}</p>
             <dl class="details">
-              {% if req.preferred_meeting_type %}
-                <div><dt>Format</dt><dd>{{ req.preferred_meeting_type }}</dd></div>
+              {% if req.meeting_preference or req.preferred_meeting_type %}
+                <div><dt>Preference</dt><dd>{{ req.meeting_preference or req.preferred_meeting_type }}</dd></div>
               {% endif %}
-              {% if req.preferred_time %}
-                <div><dt>Preferred Time</dt><dd>{{ req.preferred_time }}</dd></div>
+              {% if req.note and req.study_goal %}
+                <div><dt>Note</dt><dd>{{ req.note }}</dd></div>
               {% endif %}
             </dl>
           </div>
