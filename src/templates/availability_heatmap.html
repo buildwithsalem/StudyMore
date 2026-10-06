@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Availability Heatmap | StudyMore</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+
+<header class="topbar">
+    <span class="brand">StudyMore</span>
+    <nav>
+        <a href="{{ url_for('search.search') }}">Search Groups</a>
+        <a href="{{ url_for('create_group') }}">Create Group</a>
+        <a href="{{ url_for('my_groups') }}">My Groups</a>
+        <a href="{{ url_for('study_request') }}">Find My Match</a>
+        <a href="{{ url_for('availability') }}">Availability</a>
+        <a href="{{ url_for('logout') }}">Log Out</a>
+    </nav>
+</header>
+
+<main>
+    <h1>Group Availability Heatmap</h1>
+
+    <p>
+        Compare group members' weekly availability to find the best
+        meeting times.
+    </p>
+<div class="heatmap-summary">
+    <div>
+        <strong>
+            {{ total_members }} group member{% if total_members != 1 %}s{% endif %}
+        </strong>
+        <div>
+            {% if members_with_availability == 0 %}
+                No members have added availability yet.
+            {% else %}
+                {{ members_with_availability }} of {{ total_members }}
+                member{% if total_members != 1 %}s{% endif %}
+                {% if members_with_availability == 1 %}has{% else %}have{% endif %}
+                added their availability.
+            {% endif %}
+        </div>
+    </div>
+
+    <span>Darker cells mean more members are available.</span>
+</div>
+
+<div class="heatmap-table-wrapper">
+    <table class="heatmap-table">
+        <thead>
+            <tr>
+                <th>Time</th>
+
+                {% for day in days %}
+                    <th>{{ day }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+
+        <tbody>
+            {% for slot in time_slots %}
+                <tr>
+                    <th>{{ slot["label"] }}</th>
+
+                    {% for day in days %}
+                        {% set count = heatmap[
+                            (day, slot["start"], slot["end"])
+                        ] %}
+
+                        {% if count == members_with_availability and members_with_availability > 0 %}
+                            <td class="heatmap-cell heat-high">
+                        {% elif count > 0 %}
+                            <td class="heatmap-cell heat-medium">
+                        {% else %}
+                            <td class="heatmap-cell heat-none">
+                        {% endif %}
+                                {% if members_with_availability > 0 %}
+                                    {{ count }}/{{ members_with_availability }}
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </td>
+                    {% endfor %}
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+</main>
+
+</body>
+</html>

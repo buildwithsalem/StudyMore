@@ -1,3 +1,25 @@
+:root {
+  --ink: #1f2937;
+  --muted: #6b7280;
+  --line: #e5e7eb;
+  --accent: #3157c8;
+  --open: #2e8b57;
+  --full: #c97a16;
+  --closed: #7b8491;
+  --danger: #c94a43;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, Helvetica, sans-serif;
+  background: #f6f7f9;
+  color: var(--ink);
+}
+
 /* borders on the results table so the rows are easier to read */
 table {
     border-collapse: collapse;
@@ -574,4 +596,359 @@ input[type="text"]:focus, select:focus {
   .my-group-actions {
     flex-wrap: wrap;
   }
+}
+
+
+/* availability */
+.availability-main {
+  max-width: 1050px;
+}
+
+.availability-card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 22px;
+}
+
+.availability-instructions {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.availability-instructions h2 {
+  margin: 0 0 5px;
+  font-size: 17px;
+}
+
+.availability-instructions p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.availability-legend {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.legend-box {
+  width: 18px;
+  height: 18px;
+  background: var(--accent);
+  border-radius: 4px;
+}
+
+.availability-scroll {
+  overflow-x: auto;
+}
+
+.availability-grid {
+  display: grid;
+  grid-template-columns: 110px repeat(5, minmax(105px, 1fr));
+  gap: 7px;
+  min-width: 700px;
+}
+
+.grid-header {
+  padding: 10px 6px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.time-header {
+  text-align: left;
+}
+
+.time-label {
+  display: flex;
+  align-items: center;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.availability-slot {
+  display: block;
+  margin: 0;
+  cursor: pointer;
+}
+
+.availability-slot input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.availability-slot span {
+  display: block;
+  height: 42px;
+  background: #f8f9fb;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  transition: 0.15s ease;
+}
+
+.availability-slot:hover span {
+  border-color: var(--accent);
+  background: #eef3ff;
+}
+
+.availability-slot input:checked + span {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.availability-slot input:focus-visible + span {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.availability-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.availability-save-note {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+@media (max-width: 700px) {
+  .availability-instructions {
+    flex-direction: column;
+  }
+
+  .availability-actions {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+/* smart study matches */
+.matches-main {
+  max-width: 900px;
+}
+
+.request-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  padding: 20px;
+  margin-bottom: 24px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.summary-label {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.request-summary h2 {
+  margin: 0 0 5px;
+  font-size: 18px;
+}
+
+.request-summary p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.matches-section {
+  margin-top: 26px;
+}
+
+.matches-section-heading {
+  margin-bottom: 12px;
+}
+
+.matches-section-heading h2 {
+  margin: 0 0 4px;
+  font-size: 18px;
+}
+
+.matches-section-heading p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.match-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.match-card {
+  padding: 20px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.match-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+.match-type {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.match-card h3 {
+  margin: 0 0 4px;
+  font-size: 18px;
+}
+
+.match-course {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.match-score {
+  min-width: 82px;
+  padding: 10px 12px;
+  text-align: center;
+  color: var(--accent);
+  background: #eef4ff;
+  border: 1px solid #cddcff;
+  border-radius: 9px;
+  font-size: 21px;
+  font-weight: 700;
+}
+
+.match-score span {
+  display: block;
+  margin-top: 1px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.match-reasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.match-reason {
+  padding: 6px 9px;
+  color: var(--ink);
+  background: #f5f7fa;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 12px;
+}
+
+.overlap-summary {
+  margin-top: 14px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.overlap-summary strong {
+  color: var(--ink);
+}
+
+.match-actions {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.matches-section .empty-state h3 {
+  margin: 0 0 6px;
+  font-size: 16px;
+}
+
+@media (max-width: 650px) {
+  .request-summary,
+  .match-card-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .match-score {
+    width: fit-content;
+  }
+}
+/* Group Availability Heatmap */
+
+.heatmap-summary {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 20px 0;
+    padding: 16px 20px;
+    background: white;
+    border-radius: 12px;
+}
+
+.heatmap-table-wrapper {
+    overflow-x: auto;
+}
+
+.heatmap-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 6px;
+    background: white;
+    padding: 16px;
+    border-radius: 14px;
+}
+
+.heatmap-table th {
+    padding: 12px;
+    text-align: center;
+}
+
+.heatmap-cell {
+    padding: 16px;
+    text-align: center;
+    font-weight: 600;
+    border-radius: 8px;
+}
+
+/* Nobody available */
+.heat-none {
+    background: #f3f4f6;
+}
+
+/* Some members available */
+.heat-medium {
+    background: #bfdbfe;
+}
+
+/* Everyone available — best meeting time */
+.heat-high {
+    background: #2563eb;
+    color: white;
+    font-weight: 700;
 }

@@ -16,6 +16,8 @@
         <a href="{{ url_for('search.search') }}">Search Groups</a>
         <a href="{{ url_for('create_group') }}">Create Group</a>
         <a href="{{ url_for('my_groups') }}">My Groups</a>
+        <a href="{{ url_for('study_request') }}">Find My Match</a>
+        <a href="{{ url_for('availability') }}">Availability</a>
         <a href="{{ url_for('logout') }}">Log Out</a>
     </nav>
 </header>
@@ -99,37 +101,48 @@
         </div>
 
         <div class="details-actions">
+            <a href="{{ url_for('availability_heatmap', group_id=group['id']) }}"
+       class="primary">
+        View Availability Heatmap
+             </a>
 
-            {% if is_member %}
-                <div>
-                    <span class="membership-note">✓ You joined this group</span>
+    {% if is_creator %}
 
-                    <form
-                        method="POST"
-                        action="{{ url_for('leave_group', group_id=group['id']) }}">
-
-                        <button type="submit" class="danger-button">
-                            Leave Group
-                        </button>
-                    </form>
-                </div>
-
-            {% else %}
-
-                <form
-                    method="POST"
-                    action="{{ url_for('join_group', group_id=group['id']) }}">
-
-                    <button type="submit" class="primary">
-                        Join Group
-                    </button>
-                </form>
-
-            {% endif %}
-
+        <div>
+            <span class="membership-note">✓ You created this group</span>
         </div>
 
-    </article>
+    {% elif is_member %}
+
+        <div>
+            <span class="membership-note">✓ You joined this group</span>
+
+            <form
+                method="POST"
+                action="{{ url_for('leave_group', group_id=group['id']) }}">
+
+                <button type="submit" class="danger-button">
+                    Leave Group
+                </button>
+            </form>
+        </div>
+
+    {% else %}
+
+        <form
+            method="POST"
+            action="{{ url_for('join_group', group_id=group['id']) }}">
+
+            <button type="submit" class="primary">
+                Join Group
+            </button>
+        </form>
+
+    {% endif %}
+
+</div>
+
+</article>
 
 </main>
 

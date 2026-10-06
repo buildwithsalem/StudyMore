@@ -45,6 +45,24 @@ def init_db():
         )
     """)
 
+        # Add study_goal to existing study_groups databases
+    existing_columns = [
+            column[1]
+        for column in cursor.execute("PRAGMA table_info(study_groups)").fetchall()
+    ]
+
+    if "study_goal" not in existing_columns:
+        cursor.execute("""
+            ALTER TABLE study_groups
+            ADD COLUMN study_goal TEXT
+        """)
+
+    if "creator_user_id" not in existing_columns:
+        cursor.execute("""
+        ALTER TABLE study_groups
+        ADD COLUMN creator_user_id INTEGER
+    """)
+
     # Group memberships - Join/Leave/My Groups
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS group_memberships (
@@ -57,6 +75,36 @@ def init_db():
         )
     """)
 
+    # Study Requests
+# Allows students to find study partners when no suitable group exists.
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS study_requests (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            course_code TEXT NOT NULL,
+            section TEXT,
+            study_goal TEXT NOT NULL,
+            meeting_preference TEXT NOT NULL,
+            note TEXT,
+            status TEXT NOT NULL DEFAULT 'active',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+    """)
+
+    # User Availability
+    # Each row represents one selected one-hour block in the weekly availability grid.
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS user_availability (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            day_of_week TEXT NOT NULL,
+            start_time TEXT NOT NULL,
+            end_time TEXT NOT NULL,
+            UNIQUE(user_id, day_of_week, start_time, end_time),
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+    """)
     conn.commit()
     conn.close()
 
@@ -79,10 +127,31 @@ def create_test_user():
 @app.route("/", methods=["GET", "POST"])
 @app.route("/create-group", methods=["GET", "POST"])
 def create_group():
+    user_id = session.get("user_id")
+
+    if request.method == "POST":
+        partner_id = request.form.get("partner_id", type=int)
+        request_id = request.form.get("request_id", type=int)
+        partner_request_id = request.form.get(
+            "partner_request_id",
+            type=int
+        )
+    else:
+        partner_id = request.args.get("partner_id", type=int)
+        request_id = request.args.get("request_id", type=int)
+        partner_request_id = request.args.get(
+            "partner_request_id",
+            type=int
+        )
+
+    if user_id is None:
+        return redirect(url_for("login"))
+
     if request.method == "POST":
         group_name = request.form.get("group_name")
         course_code = request.form.get("course_code")
         section = request.form.get("section")
+        study_goal = request.form.get("study_goal")
         description = request.form.get("description")
         meeting_type = request.form.get("meeting_type")
         meeting_date = request.form.get("meeting_date")
@@ -92,47 +161,107 @@ def create_group():
         max_members = request.form.get("max_members")
 
         if any(value is None for value in (
-            group_name, course_code, section, description, meeting_type,
-            meeting_date, meeting_time, location, meeting_link, max_members
+            group_name, course_code, section, description,
+            meeting_type, meeting_date, meeting_time,
+            location, meeting_link, max_members
         )):
             return "Missing required form field", 400
 
-        try: 
+        try:
             max_members = int(max_members)
         except (TypeError, ValueError):
             return "Max members must be a number", 400
 
         if max_members < 2:
             return "Max members must be at least 2", 400
+
         if meeting_type == "In-Person" and not location.strip():
             return render_template(
                 "create_group.html",
                 error="Location is required for in-person groups.",
-                form=request.form
+                form=request.form,
+                partner_id=partner_id,
+                request_id=request_id,
+                partner_request_id=partner_request_id
             )
 
         if meeting_type == "Online" and not meeting_link.strip():
             return render_template(
                 "create_group.html",
                 error="Meeting link is required for online groups.",
-                form=request.form
+                form=request.form,
+                partner_id=partner_id,
+                request_id=request_id,
+                partner_request_id=partner_request_id
             )
 
-        if meeting_type == "Hybrid" and (not location.strip() or not meeting_link.strip()):
+        if meeting_type == "Hybrid" and (
+            not location.strip() or not meeting_link.strip()
+        ):
             return render_template(
                 "create_group.html",
                 error="Location and meeting link are required for hybrid groups.",
-                form=request.form
+                form=request.form,
+                partner_id=partner_id,
+                request_id=request_id,
+                partner_request_id=partner_request_id
             )
-        
-        
-        connection = sqlite3.connect("study_more.db")
 
-        connection.execute("""
+        connection = sqlite3.connect("study_more.db")
+        connection.row_factory = sqlite3.Row
+
+        # Validate the Study Request match before adding the partner.
+        if partner_id and request_id and partner_request_id:
+            my_request = connection.execute("""
+                SELECT *
+                FROM study_requests
+                WHERE id = ?
+                  AND user_id = ?
+                  AND status = 'active'
+            """, (request_id, user_id)).fetchone()
+
+            partner_request = connection.execute("""
+                SELECT *
+                FROM study_requests
+                WHERE id = ?
+                  AND user_id = ?
+                  AND status = 'active'
+            """, (partner_request_id, partner_id)).fetchone()
+
+            if (
+                my_request is None
+                or partner_request is None
+                or my_request["course_code"].upper()
+                != partner_request["course_code"].upper()
+            ):
+                connection.close()
+                return (
+                    "This study match is no longer active or valid.",
+                    400
+                )
+
+        cursor = connection.execute("""
             INSERT INTO study_groups (
+                creator_user_id,
+                group_name,
+                course_code,
+                section,
+                study_goal,
+                description,
+                meeting_type,
+                meeting_date,
+                meeting_time,
+                location,
+                meeting_link,
+                max_members
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            user_id,
             group_name,
             course_code,
             section,
+            study_goal,
             description,
             meeting_type,
             meeting_date,
@@ -140,32 +269,54 @@ def create_group():
             location,
             meeting_link,
             max_members
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """, (
-        group_name,
-        course_code,
-        section, 
-        description,
-        meeting_type,
-        meeting_date,
-        meeting_time,
-        location,
-        meeting_link,
-        max_members
-    ))
+        ))
+
+        new_group_id = cursor.lastrowid
+
+        # The creator automatically becomes a member.
+        connection.execute("""
+            INSERT INTO group_memberships (user_id, group_id)
+            VALUES (?, ?)
+        """, (user_id, new_group_id))
+
+        # Add the matched study partner.
+        if partner_id and partner_id != user_id:
+            connection.execute("""
+                INSERT OR IGNORE INTO group_memberships (user_id, group_id)
+                VALUES (?, ?)
+            """, (partner_id, new_group_id))
+
+        # The two Study Requests are no longer active after
+        # the students create a group together.
+        if request_id and partner_request_id:
+            connection.execute("""
+                UPDATE study_requests
+                SET status = 'matched'
+                WHERE id IN (?, ?)
+            """, (request_id, partner_request_id))
+
         connection.commit()
         connection.close()
 
-        print("Group Name:", group_name)
-        print("Course Code:", course_code)
-        print("Meeting Type:", meeting_type)
+        return redirect(
+            url_for("group_details", group_id=new_group_id)
+        )
 
-        return redirect(url_for("create_group"))
-    
-    return render_template("create_group.html")
+    # GET request: prefill the form when coming from Smart Study Match.
+    prefill = {
+        "course_code": request.args.get("course_code", ""),
+        "section": request.args.get("section", ""),
+        "study_goal": request.args.get("study_goal", ""),
+        "meeting_type": request.args.get("meeting_type", "")
+    }
 
-
+    return render_template(
+        "create_group.html",
+        form=prefill,
+        partner_id=partner_id,
+        request_id=request_id,
+        partner_request_id=partner_request_id
+    )
 
 @app.route("/group/<int:group_id>")
 def group_details(group_id):
@@ -200,6 +351,7 @@ def group_details(group_id):
     """, (group_id, user_id)).fetchone()
 
     is_member = membership is not None
+    is_creator = group["creator_user_id"] == user_id
 
     conn.close()
 
@@ -207,7 +359,8 @@ def group_details(group_id):
         "group_details.html",
         group=group,
         member_count=member_count,
-        is_member=is_member
+        is_member=is_member,
+        is_creator=is_creator
     )
 
 
@@ -352,7 +505,510 @@ def my_groups():
 
     return render_template("my_groups.html", groups=groups)
 
+@app.route("/availability", methods=["GET", "POST"])
+def availability():
+    if "user_id" not in session:
+        return redirect(url_for("login"))
 
+    user_id = session["user_id"]
+
+    days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+
+    time_slots = [
+        {"label": "9–10 AM", "start": "09:00", "end": "10:00"},
+        {"label": "10–11 AM", "start": "10:00", "end": "11:00"},
+        {"label": "11 AM–12 PM", "start": "11:00", "end": "12:00"},
+        {"label": "12–1 PM", "start": "12:00", "end": "13:00"},
+        {"label": "1–2 PM", "start": "13:00", "end": "14:00"},
+        {"label": "2–3 PM", "start": "14:00", "end": "15:00"},
+        {"label": "3–4 PM", "start": "15:00", "end": "16:00"},
+        {"label": "4–5 PM", "start": "16:00", "end": "17:00"},
+        {"label": "5–6 PM", "start": "17:00", "end": "18:00"},
+        {"label": "6–7 PM", "start": "18:00", "end": "19:00"},
+        {"label": "7–8 PM", "start": "19:00", "end": "20:00"},
+    ]
+
+    conn = sqlite3.connect("study_more.db")
+    conn.row_factory = sqlite3.Row
+    message = None
+
+    if request.method == "POST":
+        selected = request.form.getlist("availability")
+
+        # Replace the user's old availability with the newly selected schedule.
+        conn.execute(
+            "DELETE FROM user_availability WHERE user_id = ?",
+            (user_id,)
+        )
+
+        for slot in selected:
+            try:
+                day, start_time, end_time = slot.split("|")
+            except ValueError:
+                continue
+
+            # Only save values that came from our approved grid.
+            valid_slot = (
+                day in days
+                and any(
+                    item["start"] == start_time and item["end"] == end_time
+                    for item in time_slots
+                )
+            )
+
+            if valid_slot:
+                conn.execute(
+                    """
+                    INSERT INTO user_availability
+                    (user_id, day_of_week, start_time, end_time)
+                    VALUES (?, ?, ?, ?)
+                    """,
+                    (user_id, day, start_time, end_time)
+                )
+
+        conn.commit()
+        message = "Your availability has been saved."
+
+    saved_rows = conn.execute(
+        """
+        SELECT day_of_week, start_time, end_time
+        FROM user_availability
+        WHERE user_id = ?
+        """,
+        (user_id,)
+    ).fetchall()
+
+    selected_slots = {
+        f"{row['day_of_week']}|{row['start_time']}|{row['end_time']}"
+        for row in saved_rows
+    }
+
+    conn.close()
+
+    return render_template(
+        "availability.html",
+        days=days,
+        time_slots=time_slots,
+        selected_slots=selected_slots,
+        message=message
+    )
+@app.route("/group/<int:group_id>/heatmap")
+def availability_heatmap(group_id):
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
+    conn = sqlite3.connect("study_more.db")
+    conn.row_factory = sqlite3.Row
+
+    user_id = session["user_id"]
+    
+
+    membership = conn.execute(
+    """
+    SELECT 1
+    FROM group_memberships
+    WHERE group_id = ? AND user_id = ?
+    """,
+    (group_id, user_id)
+).fetchone()
+
+    if membership is None:
+        conn.close()
+        return redirect(url_for("group_details", group_id=group_id))
+
+    members = conn.execute(
+        """
+        SELECT u.id, u.name
+        FROM group_memberships gm
+        JOIN users u ON u.id = gm.user_id
+        WHERE gm.group_id = ?
+        """,
+        (group_id,)
+    ).fetchall()
+
+    availability_rows = conn.execute(
+    """
+    SELECT ua.user_id, ua.day_of_week, ua.start_time, ua.end_time
+    FROM user_availability ua
+    JOIN group_memberships gm ON gm.user_id = ua.user_id
+    WHERE gm.group_id = ?
+    """,
+    (group_id,)
+).fetchall()
+    conn.close()
+
+    
+    
+    members_with_availability = len({
+        row["user_id"] for row in availability_rows
+    })
+
+    days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+
+    time_slots = [
+        {"label": "9–10 AM", "start": "09:00", "end": "10:00"},
+        {"label": "10–11 AM", "start": "10:00", "end": "11:00"},
+        {"label": "11 AM–12 PM", "start": "11:00", "end": "12:00"},
+        {"label": "12–1 PM", "start": "12:00", "end": "13:00"},
+        {"label": "1–2 PM", "start": "13:00", "end": "14:00"},
+        {"label": "2–3 PM", "start": "14:00", "end": "15:00"},
+        {"label": "3–4 PM", "start": "15:00", "end": "16:00"},
+        {"label": "4–5 PM", "start": "16:00", "end": "17:00"},
+        {"label": "5–6 PM", "start": "17:00", "end": "18:00"},
+        {"label": "6–7 PM", "start": "18:00", "end": "19:00"},
+        {"label": "7–8 PM", "start": "19:00", "end": "20:00"},
+    ]
+
+    heatmap = {}
+
+    for day in days:
+        for slot in time_slots:
+            count = sum(
+                1
+                for row in availability_rows
+                if row["day_of_week"] == day
+                and row["start_time"] == slot["start"]
+                and row["end_time"] == slot["end"]
+            )
+
+            heatmap[(day, slot["start"], slot["end"])] = count
+
+    return render_template(
+    "availability_heatmap.html",
+    group_id=group_id,
+    members=members,
+    days=days,
+    time_slots=time_slots,
+    heatmap=heatmap,
+    total_members=len(members),
+    members_with_availability=members_with_availability
+)
+
+@app.route("/study-request", methods=["GET", "POST"])
+def study_request():
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
+    user_id = session["user_id"]
+
+    study_goals = [
+        "Exam",
+        "Assignment / Project",
+        "Final Exam",
+        "Weekly Study",
+        "Other"
+    ]
+
+    meeting_preferences = [
+        "In-Person",
+        "Online",
+        "Hybrid"
+    ]
+
+    conn = sqlite3.connect("study_more.db")
+    conn.row_factory = sqlite3.Row
+
+    availability_count = conn.execute(
+        """
+        SELECT COUNT(*) AS count
+        FROM user_availability
+        WHERE user_id = ?
+        """,
+        (user_id,)
+    ).fetchone()["count"]
+
+    error = None
+
+    if request.method == "POST":
+        course_code = request.form.get("course_code", "").strip().upper()
+        section = request.form.get("section", "").strip()
+        study_goal = request.form.get("study_goal", "").strip()
+        meeting_preference = request.form.get(
+            "meeting_preference", ""
+        ).strip()
+        note = request.form.get("note", "").strip()
+
+        if not course_code or not study_goal or not meeting_preference:
+            error = "Please complete all required fields."
+
+        elif study_goal not in study_goals:
+            error = "Please select a valid study goal."
+
+        elif meeting_preference not in meeting_preferences:
+            error = "Please select a valid meeting preference."
+
+        elif availability_count == 0:
+            error = (
+                "Please add your weekly availability before "
+                "finding study matches."
+            )
+
+        else:
+            cursor = conn.execute(
+                """
+                INSERT INTO study_requests
+                (
+                    user_id,
+                    course_code,
+                    section,
+                    study_goal,
+                    meeting_preference,
+                    note,
+                    status
+                )
+                VALUES (?, ?, ?, ?, ?, ?, 'active')
+                """,
+                (
+                    user_id,
+                    course_code,
+                    section,
+                    study_goal,
+                    meeting_preference,
+                    note
+                )
+            )
+
+            conn.commit()
+            request_id = cursor.lastrowid
+            conn.close()
+
+            return redirect(
+                url_for("study_matches", request_id=request_id)
+            )
+
+    conn.close()
+
+    return render_template(
+        "study_request.html",
+        study_goals=study_goals,
+        meeting_preferences=meeting_preferences,
+        availability_count=availability_count,
+        error=error,
+        form=request.form
+    )
+@app.route("/study-matches/<int:request_id>")
+def study_matches(request_id):
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
+    user_id = session["user_id"]
+
+    conn = sqlite3.connect("study_more.db")
+    conn.row_factory = sqlite3.Row
+
+    # Get this user's Study Request.
+    study_request = conn.execute(
+        """
+        SELECT *
+        FROM study_requests
+        WHERE id = ? AND user_id = ?
+        """,
+        (request_id, user_id)
+    ).fetchone()
+
+    if study_request is None:
+        conn.close()
+        return "Study Request not found.", 404
+
+    # Get the current user's availability.
+    my_availability_rows = conn.execute(
+        """
+        SELECT day_of_week, start_time, end_time
+        FROM user_availability
+        WHERE user_id = ?
+        """,
+        (user_id,)
+    ).fetchall()
+
+    my_availability = {
+        (
+            row["day_of_week"],
+            row["start_time"],
+            row["end_time"]
+        )
+        for row in my_availability_rows
+    }
+
+    # ---------------------------------------------------------
+    # STUDY PARTNER MATCHING
+    # Only compare active requests for the same course.
+    # ---------------------------------------------------------
+
+    candidate_requests = conn.execute(
+        """
+        SELECT
+            sr.*,
+            u.name
+        FROM study_requests sr
+        JOIN users u ON u.id = sr.user_id
+        WHERE sr.user_id != ?
+          AND sr.status = 'active'
+          AND UPPER(sr.course_code) = UPPER(?)
+        """,
+        (user_id, study_request["course_code"])
+    ).fetchall()
+
+    partner_matches = []
+
+    for candidate in candidate_requests:
+        reasons = []
+        score = 10
+
+        # Same course is required, so every candidate here gets
+        # the 10-point course base score.
+        reasons.append("Same course")
+
+        if candidate["study_goal"] == study_request["study_goal"]:
+            score += 30
+            reasons.append("Same study goal")
+
+        if (
+            candidate["meeting_preference"]
+            == study_request["meeting_preference"]
+        ):
+            score += 20
+            reasons.append("Same meeting preference")
+
+        if (
+            study_request["section"]
+            and candidate["section"]
+            and candidate["section"].strip().lower()
+            == study_request["section"].strip().lower()
+        ):
+            score += 10
+            reasons.append("Same section")
+
+        candidate_availability_rows = conn.execute(
+            """
+            SELECT day_of_week, start_time, end_time
+            FROM user_availability
+            WHERE user_id = ?
+            """,
+            (candidate["user_id"],)
+        ).fetchall()
+
+        candidate_availability = {
+            (
+                row["day_of_week"],
+                row["start_time"],
+                row["end_time"]
+            )
+            for row in candidate_availability_rows
+        }
+
+        overlapping_slots = (
+            my_availability & candidate_availability
+        )
+
+        overlap_count = len(overlapping_slots)
+
+        # Availability is worth up to 30 points.
+        if overlap_count >= 3:
+            score += 30
+            reasons.append("Strong availability overlap")
+        elif overlap_count == 2:
+            score += 20
+            reasons.append("2 overlapping time blocks")
+        elif overlap_count == 1:
+            score += 10
+            reasons.append("1 overlapping time block")
+
+        partner_matches.append({
+            "request_id": candidate["id"],
+            "user_id": candidate["user_id"],
+            "name": candidate["name"],
+            "course_code": candidate["course_code"],
+            "study_goal": candidate["study_goal"],
+            "score": score,
+            "reasons": reasons,
+            "overlap_count": overlap_count,
+            "overlapping_slots": sorted(overlapping_slots)
+        })
+
+    # Highest compatibility appears first.
+    partner_matches.sort(
+        key=lambda match: (
+            match["score"],
+            match["overlap_count"]
+        ),
+        reverse=True
+    )
+
+    # ---------------------------------------------------------
+    # EXISTING GROUP MATCHING
+    # Groups must be open and have remaining capacity.
+    # ---------------------------------------------------------
+
+    group_rows = conn.execute(
+        """
+        SELECT
+            sg.*,
+            COUNT(gm.id) AS member_count
+        FROM study_groups sg
+        LEFT JOIN group_memberships gm
+            ON gm.group_id = sg.id
+        WHERE LOWER(sg.status) = 'open'
+          AND UPPER(sg.course_code) = UPPER(?)
+        GROUP BY sg.id
+        HAVING COUNT(gm.id) < sg.max_members
+        """,
+        (study_request["course_code"],)
+    ).fetchall()
+
+    group_matches = []
+
+    for group in group_rows:
+        reasons = ["Same course"]
+        score = 40
+
+        if (
+            study_request["section"]
+            and group["section"]
+            and group["section"].strip().lower()
+            == study_request["section"].strip().lower()
+        ):
+            score += 20
+            reasons.append("Same section")
+
+        if (
+            group["meeting_type"]
+            == study_request["meeting_preference"]
+        ):
+            score += 20
+            reasons.append("Same meeting preference")
+
+        # study_goal was added to study_groups for Iteration 2.
+        # Older groups may have NULL because they existed before
+        # this feature was introduced.
+        if (
+            group["study_goal"]
+            and group["study_goal"]
+            == study_request["study_goal"]
+        ):
+            score += 20
+            reasons.append("Same study goal")
+
+        group_matches.append({
+            "id": group["id"],
+            "group_name": group["group_name"],
+            "course_code": group["course_code"],
+            "score": score,
+            "reasons": reasons
+        })
+
+    group_matches.sort(
+        key=lambda match: match["score"],
+        reverse=True
+    )
+
+    conn.close()
+
+    return render_template(
+        "study_matches.html",
+        study_request=study_request,
+        partner_matches=partner_matches,
+        group_matches=group_matches
+    )
 
 @app.route("/register", methods=["GET", "POST"])
 def register():

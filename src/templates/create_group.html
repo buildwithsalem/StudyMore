@@ -16,6 +16,8 @@
         <a href="{{ url_for('search.search') }}">Search Groups</a>
         <a href="{{ url_for('create_group') }}" class="active">Create Group</a>
         <a href="{{ url_for('my_groups') }}">My Groups</a>
+        <a href="{{ url_for('study_request') }}">Find My Match</a>
+        <a href="{{ url_for('availability') }}">Availability</a>
         <a href="{{ url_for('logout') }}">Log Out</a>
     </nav>
 </header>
@@ -33,6 +35,9 @@
 {% endif %}
 
     <form method="POST" class="create-form">
+        <input type="hidden" name="partner_id" value="{{ partner_id or '' }}">
+        <input type="hidden" name="request_id" value="{{ request_id or '' }}">
+        <input type="hidden" name="partner_request_id" value="{{ partner_request_id or '' }}">
 
         <div class="form-section">
             <h2>Group Information</h2>
@@ -70,6 +75,17 @@
                         value="{{ form.get('section', '') if form else '' }}">
                 </label>
             </div>
+
+            <label for="study_goal">
+                <span>Study Goal <span class="optional">(optional)</span></span>
+                <input
+                    type="text"
+                    id="study_goal"
+                    name="study_goal"
+                    placeholder="Example: Exam"
+                    value="{{ form.get('study_goal', '') if form else '' }}"
+                    readonly>
+            </label>
 
             <label for="description">
                 <span>Description <span class="required">*</span></span>

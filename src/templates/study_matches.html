@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Smart Study Matches | StudyMore</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+
+<header class="topbar">
+    <span class="brand">StudyMore</span>
+
+    <nav>
+        <a href="{{ url_for('search.search') }}">Search Groups</a>
+        <a href="{{ url_for('create_group') }}">Create Group</a>
+        <a href="{{ url_for('my_groups') }}">My Groups</a>
+        <a href="{{ url_for('study_request') }}" class="active">Find My Match</a>
+        <a href="{{ url_for('availability') }}">Availability</a>
+        <a href="{{ url_for('logout') }}">Log Out</a>
+    </nav>
+</header>
+
+<main class="matches-main">
+
+    <div class="page-heading">
+        <h1>Smart Study Matches</h1>
+        <p>
+            StudyMore ranked these matches using your course, study goal,
+            meeting preference, section, and overlapping availability.
+        </p>
+    </div>
+
+    <section class="request-summary">
+        <div>
+            <span class="summary-label">Your request</span>
+            <h2>{{ study_request.course_code }} — {{ study_request.study_goal }}</h2>
+
+            <p>
+                {% if study_request.section %}
+                    Section {{ study_request.section }} ·
+                {% endif %}
+                {{ study_request.meeting_preference }}
+            </p>
+        </div>
+
+        <a href="{{ url_for('study_request') }}" class="secondary">
+            New Study Request
+        </a>
+    </section>
+
+
+    <section class="matches-section">
+
+        <div class="matches-section-heading">
+            <div>
+                <h2>Study Partner Matches</h2>
+                <p>Students looking for a compatible study session.</p>
+            </div>
+        </div>
+
+        {% if partner_matches %}
+
+            <div class="match-list">
+
+                {% for match in partner_matches %}
+
+                    <article class="match-card">
+
+                        <div class="match-card-header">
+
+                            <div>
+                                <span class="match-type">STUDY PARTNER</span>
+                                <h3>{{ match.name }}</h3>
+                                <p class="match-course">
+                                    {{ match.course_code }} — {{ match.study_goal }}
+                                </p>
+                            </div>
+
+                            <div class="match-score">
+                                {{ match.score }}%
+                                <span>Match</span>
+                            </div>
+
+                        </div>
+
+                        <div class="match-reasons">
+
+                            {% for reason in match.reasons %}
+                                <span class="match-reason">
+                                    ✓ {{ reason }}
+                                </span>
+                            {% endfor %}
+
+                        </div>
+
+                        {% if match.overlap_count > 0 %}
+
+                            <div class="overlap-summary">
+                                <strong>{{ match.overlap_count }}</strong>
+                                overlapping availability
+                                {% if match.overlap_count == 1 %}
+                                    block
+                                {% else %}
+                                    blocks
+                                {% endif %}
+                            </div>
+
+                        {% endif %}
+
+                        <div class="match-actions">
+                            <a
+                                href="{{ url_for(
+                                    'create_group',
+                                    partner_id=match['user_id'],
+                                    request_id=study_request.id,
+                                    partner_request_id=match['request_id'],
+                                    course_code=study_request.course_code,
+                                    section=study_request.section,
+                                    study_goal=study_request.study_goal,
+                                    meeting_type=study_request.meeting_preference
+                                ) }}"
+                                class="primary"
+                            >
+                                Create Group Together
+                            </a>
+                        </div>
+
+                    </article>
+
+                {% endfor %}
+
+            </div>
+
+        {% else %}
+
+            <div class="empty-state">
+                <h3>No compatible study partners yet</h3>
+                <p>
+                    Your Study Request is active. As compatible students
+                    create requests, StudyMore can identify potential matches.
+                </p>
+            </div>
+
+        {% endif %}
+
+    </section>
+
+
+    <section class="matches-section">
+
+        <div class="matches-section-heading">
+            <div>
+                <h2>Existing Group Matches</h2>
+                <p>Active study groups that may fit what you're looking for.</p>
+            </div>
+        </div>
+
+        {% if group_matches %}
+
+            <div class="match-list">
+
+                {% for match in group_matches %}
+
+                    <article class="match-card">
+
+                        <div class="match-card-header">
+
+                            <div>
+                                <span class="match-type">STUDY GROUP</span>
+                                <h3>{{ match.group_name }}</h3>
+                                <p class="match-course">
+                                    {{ match.course_code }}
+                                </p>
+                            </div>
+
+                            <div class="match-score">
+                                {{ match.score }}%
+                                <span>Match</span>
+                            </div>
+
+                        </div>
+
+                        <div class="match-reasons">
+
+                            {% for reason in match.reasons %}
+                                <span class="match-reason">
+                                    ✓ {{ reason }}
+                                </span>
+                            {% endfor %}
+
+                        </div>
+
+                        <div class="match-actions">
+                            <a
+                                href="{{ url_for('group_details', group_id=match.id) }}"
+                                class="primary"
+                            >
+                                View Group
+                            </a>
+                        </div>
+
+                    </article>
+
+                {% endfor %}
+
+            </div>
+
+        {% else %}
+
+            <div class="empty-state">
+                <h3>No suitable groups right now</h3>
+                <p>
+                    
+
+                </p>
+            </div>
+
+        {% endif %}
+
+    </section>
+
+</main>
+
+</body>
+</html>
