@@ -2,10 +2,21 @@ from flask import Flask, render_template, request, redirect, url_for, session
 from werkzeug.security import generate_password_hash, check_password_hash
 from search import search_bp
 from dashboard import dashboard_bp
+from db import get_db_connection, init_app as init_database_config
+from matching import (
+    find_group_matches,
+    find_partner_matches,
+    get_user_study_request,
+)
+from validators import safe_meeting_url, validate_meeting_link
 
 import sqlite3
 
 app = Flask(__name__)
+# One database setting (app.config["DATABASE"]) shared by every route and blueprint.
+init_database_config(app)
+# Only http(s) meeting links are ever rendered as hrefs, even for old rows.
+app.add_template_filter(safe_meeting_url, "safe_meeting_url")
 
 import os
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", os.urandom(24))
@@ -13,8 +24,17 @@ app.register_blueprint(search_bp)
 app.register_blueprint(dashboard_bp)
 
 
-def init_db():
-    conn = sqlite3.connect("study_more.db")
+def init_db(database=None):
+    """Create any missing tables in `database` (default: app.config["DATABASE"])."""
+    conn = sqlite3.connect(database or app.config["DATABASE"])
+    try:
+        _create_tables(conn)
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def _create_tables(conn):
     cursor = conn.cursor()
 
     # Users table - Salem's login/account feature
@@ -107,22 +127,21 @@ def init_db():
             FOREIGN KEY (user_id) REFERENCES users(id)
         )
     """)
-    conn.commit()
-    conn.close()
 
 
-def create_test_user():
-    conn = sqlite3.connect("study_more.db")
+def create_test_user(database=None):
+    conn = sqlite3.connect(database or app.config["DATABASE"])
+    try:
+        hashed_password = generate_password_hash("test123")
 
-    hashed_password = generate_password_hash("test123")
+        conn.execute("""
+            INSERT OR IGNORE INTO users (name, email, password)
+            VALUES (?, ?, ?)
+        """, ("Test User", "test@example.com", hashed_password))
 
-    conn.execute("""
-        INSERT OR IGNORE INTO users (name, email, password)
-        VALUES (?, ?, ?)
-    """, ("Test User", "test@example.com", hashed_password))
-
-    conn.commit()
-    conn.close()
+        conn.commit()
+    finally:
+        conn.close()
 
 
 
@@ -215,8 +234,24 @@ def create_group():
                 partner_request_id=partner_request_id
             )
 
-        connection = sqlite3.connect("study_more.db")
+        # A link is optional for In-Person groups (required cases are handled
+        # above), but whenever one is given it must be a real http(s) URL.
+        meeting_link, link_error = validate_meeting_link(meeting_link)
+        if link_error:
+            return render_template(
+                "create_group.html",
+                error=link_error,
+                form=request.form,
+                partner_id=partner_id,
+                request_id=request_id,
+                partner_request_id=partner_request_id
+            ), 400
+
+        connection = get_db_connection()
         connection.row_factory = sqlite3.Row
+
+        # The partner is only added when the Study Request match is valid.
+        validated_partner_id = None
 
         # Validate the Study Request match before adding the partner.
         if partner_id and request_id and partner_request_id:
@@ -247,6 +282,8 @@ def create_group():
                     "This study match is no longer active or valid.",
                     400
                 )
+
+            validated_partner_id = partner_id
 
         cursor = connection.execute("""
             INSERT INTO study_groups (
@@ -287,12 +324,14 @@ def create_group():
             VALUES (?, ?)
         """, (user_id, new_group_id))
 
-        # Add the matched study partner.
-        if partner_id and partner_id != user_id:
+        # Add the matched study partner. Only a partner whose active Study
+        # Request was validated above is added; a bare partner_id in the form
+        # must never enroll an arbitrary user.
+        if validated_partner_id and validated_partner_id != user_id:
             connection.execute("""
                 INSERT OR IGNORE INTO group_memberships (user_id, group_id)
                 VALUES (?, ?)
-            """, (partner_id, new_group_id))
+            """, (validated_partner_id, new_group_id))
 
         # The two Study Requests are no longer active after
         # the students create a group together.
@@ -333,7 +372,7 @@ def group_details(group_id):
     if user_id is None:
         return redirect(url_for("login"))
 
-    conn = sqlite3.connect("study_more.db")
+    conn = get_db_connection()
     conn.row_factory = sqlite3.Row
 
     group = conn.execute("""
@@ -380,7 +419,7 @@ def join_group(group_id):
         return redirect(url_for("login"))
 
     # 1. Connect to DB
-    conn = sqlite3.connect("study_more.db")
+    conn = get_db_connection()
     conn.row_factory = sqlite3.Row
 
     # 2. Find group
@@ -447,7 +486,7 @@ def leave_group(group_id):
         return redirect(url_for("login"))
 
     # 3. Connect to database
-    conn = sqlite3.connect("study_more.db")
+    conn = get_db_connection()
     conn.row_factory = sqlite3.Row
 
     # 4. Check that the group exists
@@ -499,7 +538,7 @@ def my_groups():
     if user_id is None:
         return redirect(url_for("login"))   
 
-    conn = sqlite3.connect("study_more.db")
+    conn = get_db_connection()
     conn.row_factory = sqlite3.Row
 
     groups = conn.execute("""
@@ -536,7 +575,7 @@ def availability():
         {"label": "7–8 PM", "start": "19:00", "end": "20:00"},
     ]
 
-    conn = sqlite3.connect("study_more.db")
+    conn = get_db_connection()
     conn.row_factory = sqlite3.Row
     message = None
 
@@ -605,7 +644,7 @@ def availability_heatmap(group_id):
     if "user_id" not in session:
         return redirect(url_for("login"))
 
-    conn = sqlite3.connect("study_more.db")
+    conn = get_db_connection()
     conn.row_factory = sqlite3.Row
 
     user_id = session["user_id"]
@@ -713,7 +752,7 @@ def study_request():
         "Hybrid"
     ]
 
-    conn = sqlite3.connect("study_more.db")
+    conn = get_db_connection()
     conn.row_factory = sqlite3.Row
 
     availability_count = conn.execute(
@@ -801,213 +840,19 @@ def study_matches(request_id):
 
     user_id = session["user_id"]
 
-    conn = sqlite3.connect("study_more.db")
+    conn = get_db_connection()
     conn.row_factory = sqlite3.Row
 
     # Get this user's Study Request.
-    study_request = conn.execute(
-        """
-        SELECT *
-        FROM study_requests
-        WHERE id = ? AND user_id = ?
-        """,
-        (request_id, user_id)
-    ).fetchone()
+    study_request = get_user_study_request(conn, request_id, user_id)
 
     if study_request is None:
         conn.close()
         return "Study Request not found.", 404
 
-    # Get the current user's availability.
-    my_availability_rows = conn.execute(
-        """
-        SELECT day_of_week, start_time, end_time
-        FROM user_availability
-        WHERE user_id = ?
-        """,
-        (user_id,)
-    ).fetchall()
-
-    my_availability = {
-        (
-            row["day_of_week"],
-            row["start_time"],
-            row["end_time"]
-        )
-        for row in my_availability_rows
-    }
-
-    # ---------------------------------------------------------
-    # STUDY PARTNER MATCHING
-    # Only compare active requests for the same course.
-    # ---------------------------------------------------------
-
-    candidate_requests = conn.execute(
-        """
-        SELECT
-            sr.*,
-            u.name
-        FROM study_requests sr
-        JOIN users u ON u.id = sr.user_id
-        WHERE sr.user_id != ?
-          AND sr.status = 'active'
-          AND UPPER(sr.course_code) = UPPER(?)
-        """,
-        (user_id, study_request["course_code"])
-    ).fetchall()
-
-    partner_matches = []
-
-    for candidate in candidate_requests:
-        reasons = []
-        score = 10
-
-        # Same course is required, so every candidate here gets
-        # the 10-point course base score.
-        reasons.append("Same course")
-
-        if candidate["study_goal"] == study_request["study_goal"]:
-            score += 30
-            reasons.append("Same study goal")
-
-        if (
-            candidate["meeting_preference"]
-            == study_request["meeting_preference"]
-        ):
-            score += 20
-            reasons.append("Same meeting preference")
-
-        if (
-            study_request["section"]
-            and candidate["section"]
-            and candidate["section"].strip().lower()
-            == study_request["section"].strip().lower()
-        ):
-            score += 10
-            reasons.append("Same section")
-
-        candidate_availability_rows = conn.execute(
-            """
-            SELECT day_of_week, start_time, end_time
-            FROM user_availability
-            WHERE user_id = ?
-            """,
-            (candidate["user_id"],)
-        ).fetchall()
-
-        candidate_availability = {
-            (
-                row["day_of_week"],
-                row["start_time"],
-                row["end_time"]
-            )
-            for row in candidate_availability_rows
-        }
-
-        overlapping_slots = (
-            my_availability & candidate_availability
-        )
-
-        overlap_count = len(overlapping_slots)
-
-        # Availability is worth up to 30 points.
-        if overlap_count >= 3:
-            score += 30
-            reasons.append("Strong availability overlap")
-        elif overlap_count == 2:
-            score += 20
-            reasons.append("2 overlapping time blocks")
-        elif overlap_count == 1:
-            score += 10
-            reasons.append("1 overlapping time block")
-
-        partner_matches.append({
-            "request_id": candidate["id"],
-            "user_id": candidate["user_id"],
-            "name": candidate["name"],
-            "course_code": candidate["course_code"],
-            "study_goal": candidate["study_goal"],
-            "score": score,
-            "reasons": reasons,
-            "overlap_count": overlap_count,
-            "overlapping_slots": sorted(overlapping_slots)
-        })
-
-    # Highest compatibility appears first.
-    partner_matches.sort(
-        key=lambda match: (
-            match["score"],
-            match["overlap_count"]
-        ),
-        reverse=True
-    )
-
-    # ---------------------------------------------------------
-    # EXISTING GROUP MATCHING
-    # Groups must be open and have remaining capacity.
-    # ---------------------------------------------------------
-
-    group_rows = conn.execute(
-        """
-        SELECT
-            sg.*,
-            COUNT(gm.id) AS member_count
-        FROM study_groups sg
-        LEFT JOIN group_memberships gm
-            ON gm.group_id = sg.id
-        WHERE LOWER(sg.status) = 'open'
-          AND UPPER(sg.course_code) = UPPER(?)
-        GROUP BY sg.id
-        HAVING COUNT(gm.id) < sg.max_members
-        """,
-        (study_request["course_code"],)
-    ).fetchall()
-
-    group_matches = []
-
-    for group in group_rows:
-        reasons = ["Same course"]
-        score = 40
-
-        if (
-            study_request["section"]
-            and group["section"]
-            and group["section"].strip().lower()
-            == study_request["section"].strip().lower()
-        ):
-            score += 20
-            reasons.append("Same section")
-
-        if (
-            group["meeting_type"]
-            == study_request["meeting_preference"]
-        ):
-            score += 20
-            reasons.append("Same meeting preference")
-
-        # study_goal was added to study_groups for Iteration 2.
-        # Older groups may have NULL because they existed before
-        # this feature was introduced.
-        if (
-            group["study_goal"]
-            and group["study_goal"]
-            == study_request["study_goal"]
-        ):
-            score += 20
-            reasons.append("Same study goal")
-
-        group_matches.append({
-            "id": group["id"],
-            "group_name": group["group_name"],
-            "course_code": group["course_code"],
-            "score": score,
-            "reasons": reasons
-        })
-
-    group_matches.sort(
-        key=lambda match: match["score"],
-        reverse=True
-    )
+    # Matching rules live in matching.py so the dashboard uses the same ones.
+    partner_matches = find_partner_matches(conn, user_id, study_request)
+    group_matches = find_group_matches(conn, study_request)
 
     conn.close()
 
@@ -1032,7 +877,7 @@ def register():
         if password != confirm_password:
             return "Password and confirmation do not match", 400
 
-        conn = sqlite3.connect("study_more.db")
+        conn = get_db_connection()
         conn.row_factory = sqlite3.Row
 
         existing = conn.execute(
@@ -1075,7 +920,7 @@ def login():
 
         email = email.strip().lower()
 
-        conn = sqlite3.connect("study_more.db")
+        conn = get_db_connection()
         conn.row_factory = sqlite3.Row
 
         user = conn.execute(

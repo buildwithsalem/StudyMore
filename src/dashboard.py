@@ -15,17 +15,13 @@ from flask import (
     url_for,
 )
 
+from db import get_db_connection  # one shared database setting for the whole app
+from matching import find_group_matches, find_partner_matches
+
 dashboard_bp = Blueprint("dashboard", __name__, template_folder="templates")
 
-DEFAULT_DATABASE = "study_more.db"
-
-
-def get_db_connection():
-    """Returns a SQLite connection configured for Row access."""
-    db_name = current_app.config.get("DATABASE", DEFAULT_DATABASE)
-    conn = sqlite3.connect(db_name)
-    conn.row_factory = sqlite3.Row
-    return conn
+# Most matches shown on the dashboard.
+MAX_DASHBOARD_MATCHES = 5
 
 
 def format_location_display(meeting_type, location, meeting_link=None):
@@ -196,79 +192,101 @@ def get_upcoming_meetings(conn, user_id, now=None):
 
 def get_user_study_requests(conn, user_id):
     """
-    Integration hook for Raghad's Study Request functionality.
-    Gracefully returns active study requests if the table exists,
-    or an empty list if the feature table is not yet created.
+    Active study requests for the user (newest first).
     Filters out inactive, completed, cancelled, closed, or fulfilled requests.
+
+    study_requests is a core table created by init_db(), so a database error
+    here is a real problem and is raised, not reported as "no requests".
     """
     if not user_id:
         return []
 
-    # Check if study_requests table exists
-    table_check = conn.execute(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name='study_requests'"
-    ).fetchone()
-    if not table_check:
-        return []
+    # The excluded statuses are fixed literals; user_id is the only bound value.
+    rows = conn.execute(
+        """
+        SELECT * FROM study_requests
+        WHERE user_id = ?
+          AND (
+                status IS NULL
+                OR LOWER(TRIM(status)) NOT IN (
+                    'inactive', 'completed', 'cancelled', 'closed',
+                    'fulfilled', 'matched', 'expired'
+                )
+              )
+        ORDER BY id DESC
+        """,
+        (user_id,),
+    ).fetchall()
 
-    inactive_statuses = ("inactive", "completed", "cancelled", "closed", "fulfilled", "matched", "expired")
-    placeholders = ", ".join("?" for _ in inactive_statuses)
-
-    try:
-        rows = conn.execute(
-            f"""
-            SELECT * FROM study_requests 
-            WHERE user_id = ? 
-              AND (status IS NULL OR LOWER(TRIM(status)) NOT IN ({placeholders}))
-            ORDER BY id DESC
-            """,
-            (user_id, *inactive_statuses),
-        ).fetchall()
-        
-        # Double check in python for robust filtering
-        active_requests = []
-        for r in rows:
-            req = dict(r)
-            st = (req.get("status") or "open").strip().lower()
-            if st not in inactive_statuses:
-                active_requests.append(req)
-        return active_requests
-    except sqlite3.OperationalError:
-        return []
+    return [dict(r) for r in rows]
 
 
-def get_user_smart_matches(conn, user_id):
+def get_user_smart_matches(conn, user_id, limit=MAX_DASHBOARD_MATCHES):
     """
-    Integration hook for Raghad's Smart Study Match functionality.
-    Does NOT implement the matching algorithm, but queries and surfaces
-    potential matches/recommendations when available.
+    Smart Study Matches for the logged-in user, computed with the real matching
+    logic in matching.py (the same code behind /study-matches/<request_id>).
+
+    Matches are built from the user's own active study requests only, so one
+    user never sees matches generated for another user's requests. Groups the
+    user already belongs to are not recommended. Each item has the keys the
+    dashboard template reads: group_name/title, course_code, match_score,
+    reason, plus group_id (group match) or request_id (study partner match).
+    A user with no active requests gets an empty list.
     """
     if not user_id:
         return []
 
-    # Check for possible match tables
-    table_check = conn.execute(
+    requests = conn.execute(
         """
-        SELECT name FROM sqlite_master 
-        WHERE type='table' AND name IN ('smart_matches', 'study_matches', 'smart_study_matches', 'study_recommendations')
-        """
-    ).fetchone()
-    if not table_check:
+        SELECT * FROM study_requests
+        WHERE user_id = ? AND status = 'active'
+        ORDER BY id DESC
+        """,
+        (user_id,),
+    ).fetchall()
+    if not requests:
         return []
 
-    table_name = table_check["name"]
-    try:
-        rows = conn.execute(
-            f"""
-            SELECT * FROM {table_name}
-            WHERE user_id = ?
-            ORDER BY id DESC
-            """,
+    joined_group_ids = {
+        row["group_id"]
+        for row in conn.execute(
+            "SELECT group_id FROM group_memberships WHERE user_id = ?",
             (user_id,),
         ).fetchall()
-        return [dict(r) for r in rows]
-    except sqlite3.OperationalError:
-        return []
+    }
+
+    best_by_key = {}
+
+    def keep_best(key, item):
+        current = best_by_key.get(key)
+        if current is None or item["match_score"] > current["match_score"]:
+            best_by_key[key] = item
+
+    for study_request in requests:
+        for match in find_group_matches(conn, study_request):
+            if match["id"] in joined_group_ids:
+                continue
+            keep_best(("group", match["id"]), {
+                "group_id": match["id"],
+                "group_name": match["group_name"],
+                "course_code": match["course_code"],
+                "match_score": match["score"],
+                "reason": ", ".join(match["reasons"]),
+            })
+
+        for match in find_partner_matches(conn, user_id, study_request):
+            keep_best(("partner", match["user_id"]), {
+                "request_id": study_request["id"],
+                "title": f"Study partner: {match['name']}",
+                "course_code": match["course_code"],
+                "match_score": match["score"],
+                "reason": ", ".join(match["reasons"]),
+            })
+
+    ranked = sorted(
+        best_by_key.values(), key=lambda item: item["match_score"], reverse=True
+    )
+    return ranked[:limit]
 
 
 def get_dashboard_data(conn, user_id, now=None):
@@ -322,3 +340,17 @@ def dashboard():
         smart_matches=data["smart_matches"],
         stats=data["stats"],
     )
+
+
+@dashboard_bp.errorhandler(sqlite3.Error)
+def handle_database_error(error):
+    """
+    A database failure on the dashboard (missing table or column, bad query) is
+    logged with its traceback and answered with a generic page. SQL and
+    database details are never sent to the browser. In debug mode the error is
+    re-raised so the developer sees the full traceback.
+    """
+    current_app.logger.exception("Database error while building the dashboard")
+    if current_app.debug:
+        raise error
+    return "Something went wrong loading your dashboard. Please try again later.", 500

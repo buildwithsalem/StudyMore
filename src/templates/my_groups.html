@@ -88,12 +88,13 @@
                             </div>
                         {% endif %}
 
-                        {% if group["meeting_link"] %}
+                        {% set safe_link = group["meeting_link"]|safe_meeting_url %}
+                        {% if safe_link %}
                             <div>
                                 <span class="info-label">Meeting Link</span>
                                 <a
                                     class="meeting-link"
-                                    href="{{ group['meeting_link'] }}"
+                                    href="{{ safe_link }}"
                                     target="_blank"
                                     rel="noopener noreferrer">
                                     Open meeting link

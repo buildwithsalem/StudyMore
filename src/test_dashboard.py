@@ -34,14 +34,15 @@ DB_NAME = "study_more.db"
 class DashboardTestCase(unittest.TestCase):
 
     def setUp(self):
-        # Work in a temporary directory for isolation
+        # Work in a temporary directory for isolation. The app is pointed at the
+        # temp database through app.config["DATABASE"] (not the working
+        # directory), exactly like production configuration.
         self.original_cwd = os.getcwd()
         self.tmp_dir = tempfile.mkdtemp(prefix="studymore-dashboard-test-")
         os.chdir(self.tmp_dir)
 
-        app_module.init_db()
-
         self.db_path = os.path.join(self.tmp_dir, DB_NAME)
+        app_module.init_db(self.db_path)
         self.conn = sqlite3.connect(self.db_path)
         self.conn.row_factory = sqlite3.Row
         insert_demo_data(self.conn)
@@ -345,42 +346,124 @@ class DashboardEmptyStatesTests(DashboardTestCase):
 
 
 class DashboardSmartMatchIntegrationTests(DashboardTestCase):
+    """The dashboard must use the real matching logic (matching.py), not a fake table."""
 
-    def test_smart_matches_graceful_when_table_missing(self):
-        """get_user_smart_matches returns empty list without error when table does not exist."""
-        matches = get_user_smart_matches(self.conn, user_id=1)
-        self.assertEqual(matches, [])
-
-    def test_smart_matches_surfaced_when_table_exists(self):
-        """When smart_matches table is created, dashboard queries and surfaces matches."""
-        self.conn.execute("""
-            CREATE TABLE IF NOT EXISTS smart_matches (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
-                group_id INTEGER,
-                group_name TEXT,
-                course_code TEXT,
-                match_score INTEGER,
-                reason TEXT
-            )
-        """)
-        self.conn.execute("""
-            INSERT INTO smart_matches (user_id, group_id, group_name, course_code, match_score, reason)
+    def add_request(self, user_id, course, section, goal, preference, status="active"):
+        cursor = self.conn.execute(
+            """
+            INSERT INTO study_requests
+                (user_id, course_code, section, study_goal, meeting_preference, status)
             VALUES (?, ?, ?, ?, ?, ?)
-        """, (1, 4, "Algorithms Problem Set", "CSE 3315", 95, "Matches your enrolled course and available hours"))
+            """,
+            (user_id, course, section, goal, preference, status),
+        )
         self.conn.commit()
+        return cursor.lastrowid
+
+    def add_availability(self, user_id, *slots):
+        self.conn.executemany(
+            """
+            INSERT INTO user_availability (user_id, day_of_week, start_time, end_time)
+            VALUES (?, ?, ?, ?)
+            """,
+            [(user_id,) + slot for slot in slots],
+        )
+        self.conn.commit()
+
+    def test_no_study_requests_gives_empty_matches(self):
+        """No study requests is a legitimate empty state, not an error."""
+        self.assertEqual(get_user_smart_matches(self.conn, user_id=1), [])
+
+    def test_group_match_comes_from_real_matching_logic(self):
+        """An open group for the user's course appears with the route's own score."""
+        # User 1 is not in group 4 (CSE 3315, section 001, In-Person, 5 seats).
+        request_id = self.add_request(1, "CSE 3315", "001", "Exam", "In-Person")
 
         matches = get_user_smart_matches(self.conn, user_id=1)
         self.assertEqual(len(matches), 1)
-        self.assertEqual(matches[0]["course_code"], "CSE 3315")
-        self.assertEqual(matches[0]["match_score"], 95)
+        self.assertEqual(matches[0]["group_id"], 4)
+        self.assertEqual(matches[0]["group_name"], "Algorithms Problem Set")
+        # Same course 40 + same section 20 + same meeting type 20 (group has no goal).
+        self.assertEqual(matches[0]["match_score"], 80)
 
-        # Verify it renders on the dashboard HTML
+        # The /study-matches route shows the exact same score for the same request.
         self.log_in(user_id=1)
+        route_body = self.client.get(f"/study-matches/{request_id}").data.decode()
+        self.assertIn("Algorithms Problem Set", route_body)
+        self.assertRegex(route_body, r"80\s*%")
+
         body = self.client.get("/dashboard").data.decode()
         self.assertIn("Algorithms Problem Set", body)
-        self.assertIn("95% Match", body)
-        self.assertIn("Matches your enrolled course and available hours", body)
+        self.assertIn("80% Match", body)
+        self.assertNotIn("No smart matches found yet.", body)
+
+    def test_dashboard_scores_equal_the_study_matches_route_scores(self):
+        """The dashboard and /study-matches share one scoring implementation."""
+        from matching import find_group_matches, find_partner_matches, get_user_study_request
+
+        request_id = self.add_request(1, "CSE 3320", "002", "Exam", "Online")
+        partner_request = self.add_request(3, "CSE 3320", "002", "Exam", "Online")
+        slot = ("Monday", "10:00", "11:00")
+        self.add_availability(1, slot, ("Tuesday", "10:00", "11:00"), ("Friday", "13:00", "14:00"))
+        self.add_availability(3, slot, ("Tuesday", "10:00", "11:00"), ("Friday", "13:00", "14:00"))
+
+        study_request = get_user_study_request(self.conn, request_id, 1)
+        partner = find_partner_matches(self.conn, 1, study_request)
+        self.assertEqual(len(partner), 1)
+        # 10 course + 30 goal + 20 preference + 10 section + 30 strong overlap
+        self.assertEqual(partner[0]["score"], 100)
+        self.assertEqual(partner[0]["request_id"], partner_request)
+
+        matches = get_user_smart_matches(self.conn, user_id=1)
+        dashboard_scores = {m["title"]: m["match_score"] for m in matches if "title" in m}
+        self.assertEqual(dashboard_scores, {"Study partner: Priya Nair": 100})
+
+        # Group 2 (CSE 3320, Online) is one the user is not in; group 6 is cancelled.
+        group_scores = {
+            m["group_name"]: m["match_score"] for m in matches if "group_name" in m
+        }
+        expected = {
+            g["group_name"]: g["score"]
+            for g in find_group_matches(self.conn, study_request)
+        }
+        self.assertEqual(group_scores, expected)
+
+    def test_already_joined_groups_are_not_recommended(self):
+        """User 1 is already in group 1 (CSE 3311), so it is not suggested."""
+        self.add_request(1, "CSE 3311", "001", "Exam", "In-Person")
+        names = [m.get("group_name") for m in get_user_smart_matches(self.conn, 1)]
+        self.assertNotIn("Iteration 1 Review", names)
+
+    def test_inactive_request_produces_no_matches(self):
+        """Only active requests drive matches (same rule as the matching route)."""
+        self.add_request(1, "CSE 3315", "001", "Exam", "In-Person", status="matched")
+        self.assertEqual(get_user_smart_matches(self.conn, user_id=1), [])
+
+    def test_user_never_sees_another_users_matches(self):
+        """Matches come only from the logged-in user's own requests."""
+        self.add_request(5, "MATH 1426", "004", "Exam", "Hybrid")  # user 5's private request
+        self.add_request(6, "PHYS 1443", "001", "Exam", "Online")
+        self.add_request(2, "MATH 1426", "004", "Exam", "Hybrid")  # a possible partner for 5
+
+        # User 1 has no active request: nothing, even though others have matches.
+        self.log_in(user_id=1)
+        body = self.client.get("/dashboard").data.decode()
+        self.assertIn("No smart matches found yet.", body)
+        self.assertNotIn("Study partner:", body)
+
+        # User 6 (PHYS request, no one else for it) sees none of user 5's matches.
+        self.log_in(user_id=6, user_name="Taylor Brooks")
+        body = self.client.get("/dashboard").data.decode()
+        self.assertNotIn("Study partner: Alex Rivera", body)
+        self.assertNotIn("Study partner: Sam Chen", body)
+
+    def test_study_matches_route_still_hides_other_users_requests(self):
+        """Existing behavior: /study-matches/<id> is 404 for another user's request."""
+        request_id = self.add_request(5, "CSE 3315", "001", "Exam", "In-Person")
+        self.log_in(user_id=1)
+        self.assertEqual(self.client.get(f"/study-matches/{request_id}").status_code, 404)
+        self.log_in(user_id=5, user_name="Sam Chen")
+        self.assertEqual(self.client.get(f"/study-matches/{request_id}").status_code, 200)
 
 
 class DashboardUnitHelperTests(DashboardTestCase):

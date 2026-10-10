@@ -17,9 +17,10 @@ DEMO_PASSWORD = "test123"
 
 
 def main():
-    app_module.init_db()
+    database = app_module.app.config["DATABASE"]
+    app_module.init_db(database)
 
-    conn = sqlite3.connect("study_more.db")
+    conn = sqlite3.connect(database)
     try:
         insert_demo_data(conn)
 
@@ -33,7 +34,7 @@ def main():
     finally:
         conn.close()
 
-    print("Sample data loaded into study_more.db")
+    print(f"Sample data loaded into {database}")
     print(f"Log in as demo@example.com with the password {DEMO_PASSWORD}")
 
 
