@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, session
 from werkzeug.security import generate_password_hash, check_password_hash
 from search import search_bp
+from search_query import derive_display_status
 
 import sqlite3
 
@@ -353,6 +354,11 @@ def group_details(group_id):
     is_member = membership is not None
     is_creator = group["creator_user_id"] == user_id
 
+    display_status = derive_display_status(
+        group["status"], member_count, group["max_members"],
+        group["meeting_date"], group["meeting_time"]
+    )
+
     conn.close()
 
     return render_template(
@@ -360,8 +366,48 @@ def group_details(group_id):
         group=group,
         member_count=member_count,
         is_member=is_member,
-        is_creator=is_creator
+        is_creator=is_creator,
+        display_status=display_status
     )
+
+
+@app.route("/group/<int:group_id>/status", methods=["POST"])
+def set_group_status(group_id):
+    user_id = session.get("user_id")
+
+    if user_id is None:
+        return redirect(url_for("login"))
+
+    new_status = request.form.get("status", "").strip()
+    if new_status not in ("Open", "Completed", "Cancelled"):
+        return "Invalid status", 400
+
+    conn = sqlite3.connect("study_more.db")
+    conn.row_factory = sqlite3.Row
+
+    group = conn.execute(
+        "SELECT * FROM study_groups WHERE id = ?", (group_id,)
+    ).fetchone()
+
+    if group is None:
+        conn.close()
+        return "Study group not found", 404
+
+    if group["creator_user_id"] != user_id:
+        conn.close()
+        return "Only the group creator can change its status", 403
+
+    stored_value = "open" if new_status == "Open" else new_status
+
+    conn.execute(
+        "UPDATE study_groups SET status = ? WHERE id = ?",
+        (stored_value, group_id)
+    )
+
+    conn.commit()
+    conn.close()
+
+    return redirect(url_for("group_details", group_id=group_id))
 
 
 @app.route("/group/<int:group_id>/join", methods=["POST"])
@@ -371,30 +417,25 @@ def join_group(group_id):
     if user_id is None:
         return redirect(url_for("login"))
 
-    # 1. Connect to DB
     conn = sqlite3.connect("study_more.db")
     conn.row_factory = sqlite3.Row
 
-    # 2. Find group
     group = conn.execute("""
         SELECT *
         FROM study_groups
         WHERE id = ?
     """, (group_id,)).fetchone()
 
-    # 3. If group doesn't exist -> 404
     if group is None:
         conn.close()
         return "Study group not found", 404
 
-    # 4. Count members
     member_count = conn.execute("""
         SELECT COUNT(*)
         FROM group_memberships
         WHERE group_id = ?
     """, (group_id,)).fetchone()[0]
 
-    # 5. Check if user already joined
     already_joined = conn.execute("""
         SELECT 1
         FROM group_memberships
@@ -405,29 +446,22 @@ def join_group(group_id):
         conn.close()
         return "User already joined this group", 400
 
-    # 6. Check if group is full
-    if member_count >= group["max_members"]:
+    display_status = derive_display_status(
+        group["status"], member_count, group["max_members"],
+        group["meeting_date"], group["meeting_time"]
+    )
+    if display_status != "Open":
         conn.close()
-        return "Study group is full", 400
+        return f"Study group is {display_status.lower()}", 400
 
-    # 7. Check status
-    if group["status"] != "open":
-        conn.close()
-        return "Study group is not open", 400
-
-    # 8. INSERT membership
     conn.execute("""
         INSERT INTO group_memberships (user_id, group_id)
         VALUES (?, ?)
     """, (user_id, group_id))
 
-    # 9. Commit
     conn.commit()
-
-    # 10. Close DB
     conn.close()
 
-    # 11. Redirect to group details
     return redirect(url_for("group_details", group_id=group_id))
 
 
@@ -489,19 +523,31 @@ def my_groups():
     user_id = session.get("user_id")
 
     if user_id is None:
-        return redirect(url_for("login"))   
+        return redirect(url_for("login"))
 
     conn = sqlite3.connect("study_more.db")
     conn.row_factory = sqlite3.Row
 
-    groups = conn.execute("""
-        SELECT study_groups.*
-        FROM study_groups
-        JOIN group_memberships ON study_groups.id = group_memberships.group_id
-        WHERE group_memberships.user_id = ?
+    rows = conn.execute("""
+        SELECT
+            sg.*,
+            (SELECT COUNT(*) FROM group_memberships gm2
+             WHERE gm2.group_id = sg.id) AS current_members
+        FROM study_groups sg
+        JOIN group_memberships gm ON sg.id = gm.group_id
+        WHERE gm.user_id = ?
     """, (user_id,)).fetchall()
 
     conn.close()
+
+    groups = []
+    for row in rows:
+        group = dict(row)
+        group["display_status"] = derive_display_status(
+            row["status"], row["current_members"], row["max_members"],
+            row["meeting_date"], row["meeting_time"]
+        )
+        groups.append(group)
 
     return render_template("my_groups.html", groups=groups)
 
@@ -939,7 +985,7 @@ def study_matches(request_id):
     # Groups must be open and have remaining capacity.
     # ---------------------------------------------------------
 
-    group_rows = conn.execute(
+        group_rows = conn.execute(
         """
         SELECT
             sg.*,
@@ -947,13 +993,19 @@ def study_matches(request_id):
         FROM study_groups sg
         LEFT JOIN group_memberships gm
             ON gm.group_id = sg.id
-        WHERE LOWER(sg.status) = 'open'
-          AND UPPER(sg.course_code) = UPPER(?)
+        WHERE UPPER(sg.course_code) = UPPER(?)
         GROUP BY sg.id
-        HAVING COUNT(gm.id) < sg.max_members
         """,
         (study_request["course_code"],)
     ).fetchall()
+
+    group_rows = [
+        row for row in group_rows
+        if derive_display_status(
+            row["status"], row["member_count"], row["max_members"],
+            row["meeting_date"], row["meeting_time"]
+        ) == "Open"
+    ]
 
     group_matches = []
 
