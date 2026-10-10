@@ -42,8 +42,8 @@
                 </p>
             </div>
 
-            <span class="status status-{{ group['status']|lower }}">
-                {{ group["status"] }}
+            <span class="status status-{{ display_status|lower }}">
+                {{ display_status }}
             </span>
         </div>
 
@@ -108,37 +108,52 @@
 
     {% if is_creator %}
 
-        <div>
-            <span class="membership-note">✓ You created this group</span>
-        </div>
+    <div class="creator-status-control">
+        <span class="membership-note">✓ You created this group</span>
 
-    {% elif is_member %}
-
-        <div>
-            <span class="membership-note">✓ You joined this group</span>
-
-            <form
-                method="POST"
-                action="{{ url_for('leave_group', group_id=group['id']) }}">
-
-                <button type="submit" class="danger-button">
-                    Leave Group
-                </button>
+        {% if display_status != "Completed" %}
+            <form method="POST" action="{{ url_for('set_group_status', group_id=group['id']) }}">
+                <input type="hidden" name="status" value="Completed">
+                <button type="submit" class="secondary">Mark Completed</button>
             </form>
-        </div>
+        {% endif %}
 
-    {% else %}
+        {% if display_status != "Cancelled" %}
+            <form method="POST" action="{{ url_for('set_group_status', group_id=group['id']) }}">
+                <input type="hidden" name="status" value="Cancelled">
+                <button type="submit" class="danger-button">Cancel Group</button>
+            </form>
+        {% endif %}
 
-        <form
-            method="POST"
-            action="{{ url_for('join_group', group_id=group['id']) }}">
+        {% if group["status"] in ("Completed", "Cancelled") %}
+            <form method="POST" action="{{ url_for('set_group_status', group_id=group['id']) }}">
+                <input type="hidden" name="status" value="Open">
+                <button type="submit" class="secondary">Reopen Group</button>
+            </form>
+        {% endif %}
+    </div>
 
-            <button type="submit" class="primary">
-                Join Group
-            </button>
+{% elif is_member %}
+
+    <div>
+        <span class="membership-note">✓ You joined this group</span>
+
+        <form method="POST" action="{{ url_for('leave_group', group_id=group['id']) }}">
+            <button type="submit" class="danger-button">Leave Group</button>
         </form>
+    </div>
 
+{% else %}
+
+    {% if display_status == "Open" %}
+        <form method="POST" action="{{ url_for('join_group', group_id=group['id']) }}">
+            <button type="submit" class="primary">Join Group</button>
+        </form>
+    {% else %}
+        <p class="membership-note">This group is {{ display_status|lower }}.</p>
     {% endif %}
+
+{% endif %}
 
 </div>
 
