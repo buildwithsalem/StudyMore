@@ -8,6 +8,9 @@ from unittest.mock import patch
 import app as app_module
 
 
+REAL_CONNECT = real_sqlite3.connect
+
+
 def future_date_time():
     dt = datetime.now() + timedelta(days=7)
     return dt.strftime("%Y-%m-%d"), dt.strftime("%H:%M")
@@ -26,13 +29,13 @@ class TestStatusRoutes(unittest.TestCase):
         self.patcher = patch.object(
             app_module.sqlite3,
             "connect",
-            lambda *args, **kwargs: real_sqlite3.connect(self.db_path)
+            lambda *args, **kwargs: REAL_CONNECT(self.db_path)
         )
         self.patcher.start()
 
         app_module.init_db()
 
-        conn = real_sqlite3.connect(self.db_path)
+        conn = REAL_CONNECT(self.db_path)
         conn.row_factory = real_sqlite3.Row
 
         conn.execute(
@@ -118,7 +121,7 @@ class TestStatusRoutes(unittest.TestCase):
         response = self.client.post("/group/1/join")
         self.assertEqual(response.status_code, 302)
 
-        conn = real_sqlite3.connect(self.db_path)
+        conn = REAL_CONNECT(self.db_path)
         row = conn.execute(
             "SELECT 1 FROM group_memberships WHERE user_id = 2 AND group_id = 1"
         ).fetchone()
@@ -156,7 +159,7 @@ class TestStatusRoutes(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 302)
 
-        conn = real_sqlite3.connect(self.db_path)
+        conn = REAL_CONNECT(self.db_path)
         row = conn.execute(
             "SELECT status FROM study_groups WHERE id = 1"
         ).fetchone()
@@ -182,7 +185,7 @@ class TestStatusRoutes(unittest.TestCase):
         self.client.post("/group/1/status", data={"status": "Cancelled"})
         self.client.post("/group/1/status", data={"status": "Open"})
 
-        conn = real_sqlite3.connect(self.db_path)
+        conn = REAL_CONNECT(self.db_path)
         row = conn.execute(
             "SELECT status FROM study_groups WHERE id = 1"
         ).fetchone()
