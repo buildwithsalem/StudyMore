@@ -2,10 +2,12 @@
 
 import re
 import sqlite3
+from datetime import datetime
 
 MEETING_TYPES = ("In-Person", "Online", "Hybrid")
 GROUP_STATUSES = ("Open", "Full", "Completed", "Cancelled")
 CLOSED_STATUSES = ("Completed", "Cancelled")
+MEETING_PASSED_SQL = "(g.meeting_date || ' ' || g.meeting_time) < datetime('now', 'localtime')"
 MAX_SEARCH_TERM_LENGTH = 100
 
 
@@ -24,6 +26,27 @@ def tidy_status(value):
     """Normalize a stored status for display. app.py stores 'open' in lowercase."""
     text = (value or "").strip().title()
     return text if text in GROUP_STATUSES else "Open"
+
+def meeting_has_passed(meeting_date, meeting_time):
+    try:
+        meeting_at = datetime.strptime(
+            f"{meeting_date} {meeting_time}", "%Y-%m-%d %H:%M"
+        )
+    except (TypeError, ValueError):
+        return False
+    return meeting_at < datetime.now()
+
+
+def derive_display_status(stored_status, current_members, max_members,
+                           meeting_date=None, meeting_time=None):
+    status = tidy_status(stored_status)
+    if status in CLOSED_STATUSES:
+        return status
+    if meeting_date and meeting_time and meeting_has_passed(meeting_date, meeting_time):
+        return "Completed"
+    if current_members >= max_members:
+        return "Full"
+    return "Open"
 
 
 def escape_like(value):
@@ -122,7 +145,6 @@ def build_search_query(filters):
     Member counts come from group_memberships rather than a stored column, so
     conditions on the count go in HAVING. All user values are bound parameters.
     """
-    # LEFT JOIN so a group with no members still appears.
     sql = [
         "SELECT",
         "    g.id AS group_id,",
@@ -158,7 +180,6 @@ def build_search_query(filters):
         params.append(contains_pattern(filters["term"].upper()))
         params.append(contains_pattern(filters["term"].upper()))
 
-    # Prefix match so "CSE" lists every CSE course.
     if filters["course_code"]:
         where.append("REPLACE(UPPER(g.course_code), ' ', '') LIKE ? ESCAPE '\\'")
         params.append(starts_with_pattern(filters["course_code"]))
@@ -171,21 +192,29 @@ def build_search_query(filters):
         where.append("g.meeting_type = ?")
         params.append(filters["meeting_type"])
 
-    # Status is derived: Completed/Cancelled from the column, otherwise Full if
-    # the count has reached max_members, otherwise Open. Nothing in app.py
-    # writes a status other than the default, so the column alone is not enough.
+    # Status is derived: Completed/Cancelled from the column if the creator
+    # set it explicitly, Completed also once the meeting date/time has
+    # passed (even if the column still says 'open'), otherwise Full if the
+    # count has reached max_members, otherwise Open.
     wanted_status = filters["status"]
     if filters["available_only"] and not wanted_status:
         wanted_status = "Open"
 
-    if wanted_status in CLOSED_STATUSES:
-        where.append("UPPER(g.status) = ?")
-        params.append(wanted_status.upper())
+    if wanted_status == "Cancelled":
+        where.append("UPPER(g.status) = 'CANCELLED'")
+    elif wanted_status == "Completed":
+        where.append(
+            "(UPPER(g.status) = 'COMPLETED' OR "
+            "(UPPER(g.status) NOT IN ('COMPLETED', 'CANCELLED') AND "
+            + MEETING_PASSED_SQL + "))"
+        )
     elif wanted_status == "Open":
         where.append("UPPER(g.status) NOT IN ('COMPLETED', 'CANCELLED')")
+        where.append("NOT " + MEETING_PASSED_SQL)
         having.append("COUNT(m.id) < g.max_members")
     elif wanted_status == "Full":
         where.append("UPPER(g.status) NOT IN ('COMPLETED', 'CANCELLED')")
+        where.append("NOT " + MEETING_PASSED_SQL)
         having.append("COUNT(m.id) >= g.max_members")
 
     if where:
@@ -196,11 +225,13 @@ def build_search_query(filters):
     if having:
         sql.append("HAVING " + " AND ".join(having))
 
-    # Joinable groups first, then full, then closed. Soonest meeting within each.
+    # Joinable groups first, then full, then closed (explicit or time-passed).
+    # Soonest meeting within each.
     sql.append(
         "ORDER BY\n"
         "    CASE\n"
         "        WHEN UPPER(g.status) IN ('COMPLETED', 'CANCELLED') THEN 2\n"
+        "        WHEN " + MEETING_PASSED_SQL + " THEN 2\n"
         "        WHEN COUNT(m.id) >= g.max_members THEN 1\n"
         "        ELSE 0\n"
         "    END ASC,\n"
@@ -216,15 +247,11 @@ def shape_result_row(row):
     """Turn a result row into the dict the template displays."""
     current_members = int(row["current_members"])
     max_members = int(row["max_members"])
-    stored_status = tidy_status(row["status"])
 
-    # Same rules as the status filter in build_search_query().
-    if stored_status in CLOSED_STATUSES:
-        display_status = stored_status
-    elif current_members >= max_members:
-        display_status = "Full"
-    else:
-        display_status = "Open"
+    display_status = derive_display_status(
+        row["status"], current_members, max_members,
+        row["meeting_date"], row["meeting_time"]
+    )
 
     if display_status == "Open":
         join_blocked_reason = None
