@@ -2,7 +2,6 @@
 
 from flask import (
     Blueprint,
-    current_app,
     redirect,
     render_template,
     request,
@@ -10,6 +9,7 @@ from flask import (
     url_for,
 )
 
+from db import get_database_path
 from search_query import (
     GROUP_STATUSES,
     MEETING_TYPES,
@@ -21,11 +21,9 @@ from search_query import (
 
 search_bp = Blueprint("search", __name__, template_folder="templates")
 
-DEFAULT_DATABASE = "study_more.db"
-
-
 def get_connection():
-    return connect(current_app.config.get("DATABASE", DEFAULT_DATABASE))
+    # Same database setting as the rest of the app (see db.py).
+    return connect(get_database_path())
 
 
 def joined_group_ids(conn, user_id):

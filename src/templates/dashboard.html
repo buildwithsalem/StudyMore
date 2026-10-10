@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Student Dashboard | StudyMore</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<header class="topbar">
+  <span class="brand">StudyMore</span>
+  <nav>
+    <a href="{{ url_for('dashboard.dashboard') }}" class="active">Dashboard</a>
+    <a href="{{ url_for('search.search') }}">Search Groups</a>
+    <a href="{{ url_for('create_group') }}">Create Group</a>
+    <a href="{{ url_for('my_groups') }}">My Groups</a>
+    <a href="{{ url_for('study_request') }}">Find My Match</a>
+    <a href="{{ url_for('availability') }}">Availability</a>
+    <a href="{{ url_for('logout') }}">Log Out</a>
+  </nav>
+</header>
+
+<main>
+  <!-- Welcome Header -->
+  <section class="dashboard-welcome">
+    <div>
+      <h1>Welcome back, {{ user_name }}!</h1>
+      <p>Here is your study overview, upcoming schedule, and group activity.</p>
+    </div>
+  </section>
+
+  <!-- Quick Actions -->
+  <section class="quick-actions-bar">
+    <a class="action-card" href="{{ url_for('search.search') }}">
+      <div class="action-card-title">🔍 Search Groups</div>
+      <div class="action-card-desc">Find study groups by course, topic, or date</div>
+    </a>
+    <a class="action-card" href="{{ url_for('create_group') }}">
+      <div class="action-card-title">➕ Create Group</div>
+      <div class="action-card-desc">Start a new study group for your classmates</div>
+    </a>
+    <a class="action-card" href="{{ url_for('my_groups') }}">
+      <div class="action-card-title">👥 My Groups</div>
+      <div class="action-card-desc">Manage your memberships and group details</div>
+    </a>
+  </section>
+
+  <!-- Summary Stats -->
+  <section class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-number">{{ stats.joined_groups_count }}</div>
+      <div class="stat-label">Joined Groups</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number">{{ stats.upcoming_meetings_count }}</div>
+      <div class="stat-label">Upcoming Meetings</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number">{{ stats.smart_matches_count }}</div>
+      <div class="stat-label">Smart Matches</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number">{{ stats.study_requests_count }}</div>
+      <div class="stat-label">Study Requests</div>
+    </div>
+  </section>
+
+  <!-- Section 1: Upcoming Meetings -->
+  <section class="dashboard-section">
+    <div class="section-title-row">
+      <h2 class="section-title">Upcoming Meetings</h2>
+    </div>
+
+    {% if upcoming_meetings %}
+      <div class="meeting-list">
+        {% for meeting in upcoming_meetings %}
+          <div class="meeting-item">
+            <div class="meeting-date-badge">
+              <div class="meeting-date-day">{{ meeting.meeting_date }}</div>
+              <div class="meeting-date-time">{{ meeting.meeting_time }}</div>
+            </div>
+
+            <div class="meeting-info">
+              <h3>{{ meeting.group_name }}</h3>
+              <p class="course">
+                {{ meeting.course_code }}{% if meeting.section %} &middot; Section {{ meeting.section }}{% endif %}
+              </p>
+              <p>
+                <strong>Location:</strong> {{ meeting.location_display }} &middot;
+                <strong>Type:</strong> {{ meeting.meeting_type }}
+              </p>
+            </div>
+
+            <div class="card-actions">
+              {% set safe_link = meeting.meeting_link|safe_meeting_url %}
+              {% if safe_link %}
+                <a class="secondary" href="{{ safe_link }}" target="_blank" rel="noopener noreferrer">Join Link</a>
+              {% endif %}
+              <a class="primary" href="{{ url_for('group_details', group_id=meeting.id) }}">View Group</a>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <p>No upcoming meetings scheduled.</p>
+        <a class="secondary" href="{{ url_for('search.search') }}">Browse Study Groups</a>
+      </div>
+    {% endif %}
+  </section>
+
+  <!-- Section 2: Joined Study Groups -->
+  <section class="dashboard-section">
+    <div class="section-title-row">
+      <h2 class="section-title">My Study Groups</h2>
+      <a class="section-link" href="{{ url_for('my_groups') }}">View all in My Groups &rarr;</a>
+    </div>
+
+    {% if joined_groups %}
+      <div class="results">
+        {% for group in joined_groups %}
+          <article class="group-card">
+            <div class="card-head">
+              <h2>{{ group.group_name }}</h2>
+              <span class="status status-{{ group.status|lower }}">{{ group.status }}</span>
+            </div>
+
+            <p class="course">
+              {{ group.course_code }}{% if group.section %} &middot; Section {{ group.section }}{% endif %}
+            </p>
+
+            {% if group.description %}
+              <p class="description">{{ group.description }}</p>
+            {% endif %}
+
+            <dl class="details">
+              <div><dt>Meets</dt><dd>{{ group.meeting_date }} at {{ group.meeting_time }}</dd></div>
+              <div><dt>Type</dt><dd>{{ group.meeting_type }}</dd></div>
+              <div><dt>Where</dt><dd>{{ group.location_display }}</dd></div>
+              <div><dt>Members</dt><dd>{{ group.member_count }} of {{ group.max_members }}</dd></div>
+            </dl>
+
+            <div class="card-actions">
+              <a class="secondary" href="{{ url_for('group_details', group_id=group.id) }}">View Details</a>
+              <form method="post" action="{{ url_for('leave_group', group_id=group.id) }}">
+                <button type="submit" class="secondary" onclick="return confirm('Are you sure you want to leave this study group?');">Leave Group</button>
+              </form>
+            </div>
+          </article>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <p>You haven't joined any study groups yet.</p>
+        <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+          <a class="primary" href="{{ url_for('search.search') }}">Search Groups</a>
+          <a class="secondary" href="{{ url_for('create_group') }}">Create a Group</a>
+        </div>
+      </div>
+    {% endif %}
+  </section>
+
+  <!-- Section 3: Smart Study Matches (Raghad's Iteration 2 feature integration) -->
+  <section class="dashboard-section">
+    <div class="section-title-row">
+      <h2 class="section-title">Smart Study Matches</h2>
+    </div>
+
+    {% if smart_matches %}
+      <div class="results">
+        {% for match in smart_matches %}
+          <div class="match-card">
+            <div class="card-head">
+              <h3>{{ match.group_name or match.title or 'Recommended Match' }}</h3>
+              {% if match.match_score %}
+                <span class="status status-open">{{ match.match_score }}% Match</span>
+              {% endif %}
+            </div>
+            <p class="course">{{ match.course_code }}</p>
+            <p class="description">{{ match.description or match.reason or 'Recommended based on your study preferences.' }}</p>
+            {% if match.group_id %}
+              <div class="card-actions">
+                <a class="primary" href="{{ url_for('group_details', group_id=match.group_id) }}">View Matched Group</a>
+              </div>
+            {% elif match.request_id %}
+              <div class="card-actions">
+                <a class="primary" href="{{ url_for('study_matches', request_id=match.request_id) }}">View Study Matches</a>
+              </div>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <p>No smart matches found yet.</p>
+        <span style="font-size: 13px; color: var(--muted);">Matches will appear here based on your courses and study preferences.</span>
+      </div>
+    {% endif %}
+  </section>
+
+  <!-- Section 4: Active Study Requests (Raghad's Iteration 2 feature integration) -->
+  <section class="dashboard-section">
+    <div class="section-title-row">
+      <h2 class="section-title">Active Study Requests</h2>
+    </div>
+
+    {% if study_requests %}
+      <div class="results">
+        {% for req in study_requests %}
+          <div class="request-card">
+            <div class="card-head">
+              <h3>{{ req.course_code }} Study Request</h3>
+              <span class="status status-open">{{ req.status or 'Active' }}</span>
+            </div>
+            <p class="description">{{ req.study_goal or req.topic or req.note or req.description or 'Looking for study partners.' }}</p>
+            <dl class="details">
+              {% if req.meeting_preference or req.preferred_meeting_type %}
+                <div><dt>Preference</dt><dd>{{ req.meeting_preference or req.preferred_meeting_type }}</dd></div>
+              {% endif %}
+              {% if req.note and req.study_goal %}
+                <div><dt>Note</dt><dd>{{ req.note }}</dd></div>
+              {% endif %}
+            </dl>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <p>No active study requests at this time.</p>
+        <span style="font-size: 13px; color: var(--muted);">When you submit a study request for a course, you can track it here.</span>
+      </div>
+    {% endif %}
+  </section>
+</main>
+
+</body>
+</html>
