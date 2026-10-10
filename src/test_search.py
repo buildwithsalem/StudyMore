@@ -340,7 +340,7 @@ class RouteTests(StudyMoreTestCase):
         self.log_in()
         body = self.client.get("/search?term=CSE+3311&meeting_type=Online").data.decode()
         self.assertIn('value="CSE 3311"', body)
-        self.assertIn('<option value="Online" selected>', body)
+        self.assertRegex(body, r'<option\s+value="Online"\s+selected')
 
     def test_search_page_shows_the_no_results_message(self):
         self.log_in()
