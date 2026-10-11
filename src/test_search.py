@@ -12,6 +12,7 @@ import shutil
 import sqlite3
 import tempfile
 import unittest
+from datetime import date, timedelta
 
 import app as app_module
 import search_query
@@ -27,6 +28,28 @@ from search_query import (
 )
 
 DB_NAME = "study_more.db"
+
+
+def keep_sample_meetings_in_the_future(conn, days_ahead=30):
+    """
+    The sample groups in demo_data.py have fixed November 2026 dates, and a
+    group now counts as Completed once its meeting time has passed. So in this
+    test database only, move every sample meeting forward by the same number
+    of days until the earliest open one is at least days_ahead days away.
+    The order and spacing of the meetings stay the same, so every test still
+    checks the same thing. demo_data.py itself is not changed, because other
+    tests rely on its exact dates.
+    """
+    earliest = conn.execute(
+        "SELECT MIN(meeting_date) FROM study_groups WHERE LOWER(status) = 'open'"
+    ).fetchone()[0]
+    shift = (date.today() + timedelta(days=days_ahead) - date.fromisoformat(earliest)).days
+    if shift > 0:
+        conn.execute(
+            "UPDATE study_groups SET meeting_date = date(meeting_date, ?)",
+            (f"+{shift} days",),
+        )
+        conn.commit()
 
 
 def names_of(results):
@@ -54,6 +77,7 @@ class StudyMoreTestCase(unittest.TestCase):
         self.conn = sqlite3.connect(self.db_path)
         self.conn.row_factory = sqlite3.Row
         insert_demo_data(self.conn)
+        keep_sample_meetings_in_the_future(self.conn)
 
     def tearDown(self):
         self.conn.close()
