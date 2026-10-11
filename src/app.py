@@ -9,6 +9,7 @@ from matching import (
     get_user_study_request,
 )
 from validators import safe_meeting_url, validate_meeting_link
+from search_query import derive_display_status
 
 import sqlite3
 
@@ -67,9 +68,9 @@ def _create_tables(conn):
         )
     """)
 
-        # Add study_goal to existing study_groups databases
+    # Add study_goal to existing study_groups databases
     existing_columns = [
-            column[1]
+        column[1]
         for column in cursor.execute("PRAGMA table_info(study_groups)").fetchall()
     ]
 
@@ -81,9 +82,9 @@ def _create_tables(conn):
 
     if "creator_user_id" not in existing_columns:
         cursor.execute("""
-        ALTER TABLE study_groups
-        ADD COLUMN creator_user_id INTEGER
-    """)
+            ALTER TABLE study_groups
+            ADD COLUMN creator_user_id INTEGER
+        """)
 
     # Group memberships - Join/Leave/My Groups
     cursor.execute("""
@@ -98,7 +99,7 @@ def _create_tables(conn):
     """)
 
     # Study Requests
-# Allows students to find study partners when no suitable group exists.
+    # Allows students to find study partners when no suitable group exists.
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS study_requests (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -365,6 +366,7 @@ def create_group():
         partner_request_id=partner_request_id
     )
 
+
 @app.route("/group/<int:group_id>")
 def group_details(group_id):
     user_id = session.get("user_id")
@@ -400,6 +402,11 @@ def group_details(group_id):
     is_member = membership is not None
     is_creator = group["creator_user_id"] == user_id
 
+    display_status = derive_display_status(
+        group["status"], member_count, group["max_members"],
+        group["meeting_date"], group["meeting_time"]
+    )
+
     conn.close()
 
     return render_template(
@@ -407,8 +414,48 @@ def group_details(group_id):
         group=group,
         member_count=member_count,
         is_member=is_member,
-        is_creator=is_creator
+        is_creator=is_creator,
+        display_status=display_status
     )
+
+
+@app.route("/group/<int:group_id>/status", methods=["POST"])
+def set_group_status(group_id):
+    user_id = session.get("user_id")
+
+    if user_id is None:
+        return redirect(url_for("login"))
+
+    new_status = request.form.get("status", "").strip()
+    if new_status not in ("Open", "Completed", "Cancelled"):
+        return "Invalid status", 400
+
+    conn = sqlite3.connect("study_more.db")
+    conn.row_factory = sqlite3.Row
+
+    group = conn.execute(
+        "SELECT * FROM study_groups WHERE id = ?", (group_id,)
+    ).fetchone()
+
+    if group is None:
+        conn.close()
+        return "Study group not found", 404
+
+    if group["creator_user_id"] != user_id:
+        conn.close()
+        return "Only the group creator can change its status", 403
+
+    stored_value = "open" if new_status == "Open" else new_status
+
+    conn.execute(
+        "UPDATE study_groups SET status = ? WHERE id = ?",
+        (stored_value, group_id)
+    )
+
+    conn.commit()
+    conn.close()
+
+    return redirect(url_for("group_details", group_id=group_id))
 
 
 @app.route("/group/<int:group_id>/join", methods=["POST"])
@@ -422,26 +469,22 @@ def join_group(group_id):
     conn = get_db_connection()
     conn.row_factory = sqlite3.Row
 
-    # 2. Find group
     group = conn.execute("""
         SELECT *
         FROM study_groups
         WHERE id = ?
     """, (group_id,)).fetchone()
 
-    # 3. If group doesn't exist -> 404
     if group is None:
         conn.close()
         return "Study group not found", 404
 
-    # 4. Count members
     member_count = conn.execute("""
         SELECT COUNT(*)
         FROM group_memberships
         WHERE group_id = ?
     """, (group_id,)).fetchone()[0]
 
-    # 5. Check if user already joined
     already_joined = conn.execute("""
         SELECT 1
         FROM group_memberships
@@ -452,29 +495,22 @@ def join_group(group_id):
         conn.close()
         return "User already joined this group", 400
 
-    # 6. Check if group is full
-    if member_count >= group["max_members"]:
+    display_status = derive_display_status(
+        group["status"], member_count, group["max_members"],
+        group["meeting_date"], group["meeting_time"]
+    )
+    if display_status != "Open":
         conn.close()
-        return "Study group is full", 400
+        return f"Study group is {display_status.lower()}", 400
 
-    # 7. Check status
-    if group["status"] != "open":
-        conn.close()
-        return "Study group is not open", 400
-
-    # 8. INSERT membership
     conn.execute("""
         INSERT INTO group_memberships (user_id, group_id)
         VALUES (?, ?)
     """, (user_id, group_id))
 
-    # 9. Commit
     conn.commit()
-
-    # 10. Close DB
     conn.close()
 
-    # 11. Redirect to group details
     return redirect(url_for("group_details", group_id=group_id))
 
 
@@ -526,7 +562,7 @@ def leave_group(group_id):
 
     # 10. Redirect based on where the user left the group
     if request.form.get("next") == "my_groups":
-      return redirect(url_for("my_groups"))
+        return redirect(url_for("my_groups"))
 
     return redirect(url_for("group_details", group_id=group_id))
 
@@ -536,21 +572,34 @@ def my_groups():
     user_id = session.get("user_id")
 
     if user_id is None:
-        return redirect(url_for("login"))   
+        return redirect(url_for("login"))
 
     conn = get_db_connection()
     conn.row_factory = sqlite3.Row
 
-    groups = conn.execute("""
-        SELECT study_groups.*
-        FROM study_groups
-        JOIN group_memberships ON study_groups.id = group_memberships.group_id
-        WHERE group_memberships.user_id = ?
+    rows = conn.execute("""
+        SELECT
+            sg.*,
+            (SELECT COUNT(*) FROM group_memberships gm2
+             WHERE gm2.group_id = sg.id) AS current_members
+        FROM study_groups sg
+        JOIN group_memberships gm ON sg.id = gm.group_id
+        WHERE gm.user_id = ?
     """, (user_id,)).fetchall()
 
     conn.close()
 
+    groups = []
+    for row in rows:
+        group = dict(row)
+        group["display_status"] = derive_display_status(
+            row["status"], row["current_members"], row["max_members"],
+            row["meeting_date"], row["meeting_time"]
+        )
+        groups.append(group)
+
     return render_template("my_groups.html", groups=groups)
+
 
 @app.route("/availability", methods=["GET", "POST"])
 def availability():
@@ -639,6 +688,8 @@ def availability():
         selected_slots=selected_slots,
         message=message
     )
+
+
 @app.route("/group/<int:group_id>/heatmap")
 def availability_heatmap(group_id):
     if "user_id" not in session:
@@ -648,16 +699,15 @@ def availability_heatmap(group_id):
     conn.row_factory = sqlite3.Row
 
     user_id = session["user_id"]
-    
 
     membership = conn.execute(
-    """
-    SELECT 1
-    FROM group_memberships
-    WHERE group_id = ? AND user_id = ?
-    """,
-    (group_id, user_id)
-).fetchone()
+        """
+        SELECT 1
+        FROM group_memberships
+        WHERE group_id = ? AND user_id = ?
+        """,
+        (group_id, user_id)
+    ).fetchone()
 
     if membership is None:
         conn.close()
@@ -674,18 +724,16 @@ def availability_heatmap(group_id):
     ).fetchall()
 
     availability_rows = conn.execute(
-    """
-    SELECT ua.user_id, ua.day_of_week, ua.start_time, ua.end_time
-    FROM user_availability ua
-    JOIN group_memberships gm ON gm.user_id = ua.user_id
-    WHERE gm.group_id = ?
-    """,
-    (group_id,)
-).fetchall()
+        """
+        SELECT ua.user_id, ua.day_of_week, ua.start_time, ua.end_time
+        FROM user_availability ua
+        JOIN group_memberships gm ON gm.user_id = ua.user_id
+        WHERE gm.group_id = ?
+        """,
+        (group_id,)
+    ).fetchall()
     conn.close()
 
-    
-    
     members_with_availability = len({
         row["user_id"] for row in availability_rows
     })
@@ -721,15 +769,16 @@ def availability_heatmap(group_id):
             heatmap[(day, slot["start"], slot["end"])] = count
 
     return render_template(
-    "availability_heatmap.html",
-    group_id=group_id,
-    members=members,
-    days=days,
-    time_slots=time_slots,
-    heatmap=heatmap,
-    total_members=len(members),
-    members_with_availability=members_with_availability
-)
+        "availability_heatmap.html",
+        group_id=group_id,
+        members=members,
+        days=days,
+        time_slots=time_slots,
+        heatmap=heatmap,
+        total_members=len(members),
+        members_with_availability=members_with_availability
+    )
+
 
 @app.route("/study-request", methods=["GET", "POST"])
 def study_request():
@@ -833,6 +882,8 @@ def study_request():
         error=error,
         form=request.form
     )
+
+
 @app.route("/study-matches/<int:request_id>")
 def study_matches(request_id):
     if "user_id" not in session:
@@ -862,6 +913,7 @@ def study_matches(request_id):
         partner_matches=partner_matches,
         group_matches=group_matches
     )
+
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
