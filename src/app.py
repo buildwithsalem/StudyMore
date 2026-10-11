@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, session
 from werkzeug.security import generate_password_hash, check_password_hash
 from search import search_bp
+from duplicate_check import duplicate_bp
 from dashboard import dashboard_bp
 from db import get_db_connection, init_app as init_database_config
 from matching import (
@@ -22,6 +23,7 @@ app.add_template_filter(safe_meeting_url, "safe_meeting_url")
 import os
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", os.urandom(24))
 app.register_blueprint(search_bp)
+app.register_blueprint(duplicate_bp)
 app.register_blueprint(dashboard_bp)
 
 
