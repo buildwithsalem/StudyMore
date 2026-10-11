@@ -13,6 +13,7 @@
     <span class="brand">StudyMore</span>
 
     <nav>
+        <a href="{{ url_for('dashboard.dashboard') }}">Dashboard</a>
         <a class="active" href="{{ url_for('search.search') }}">Search Groups</a>
         <a href="{{ url_for('create_group') }}">Create Group</a>
         <a href="{{ url_for('my_groups') }}">My Groups</a>
@@ -89,13 +90,7 @@
                     <option value="">Any</option>
 
                     {% for option in meeting_types %}
-                        <option
-                            value="{{ option }}"
-                            {% if filters.meeting_type == option %}
-                                selected
-                            {% endif %}>
-                            {{ option }}
-                        </option>
+                        <option value="{{ option }}"{% if filters.meeting_type == option %} selected{% endif %}>{{ option }}</option>
                     {% endfor %}
 
                 </select>
@@ -110,13 +105,7 @@
                     <option value="">Any</option>
 
                     {% for option in group_statuses %}
-                        <option
-                            value="{{ option }}"
-                            {% if filters.status == option %}
-                                selected
-                            {% endif %}>
-                            {{ option }}
-                        </option>
+                        <option value="{{ option }}"{% if filters.status == option %} selected{% endif %}>{{ option }}</option>
                     {% endfor %}
 
                 </select>
