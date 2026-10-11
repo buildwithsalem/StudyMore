@@ -49,13 +49,18 @@ FILLER_WORDS = {
 # Course codes written inside a group name, like "CSE 3311" or "cse3311".
 COURSE_CODE_IN_NAME = re.compile(r"\b[a-z]{2,4}\s*-?\s*\d{4}\b")
 
+# The same fields create_group() refuses to work without. create_group() only
+# rejects a field that is missing from the form; a blank value is accepted.
 REQUIRED_FIELDS = (
     "group_name",
     "course_code",
+    "section",
     "description",
     "meeting_type",
     "meeting_date",
     "meeting_time",
+    "location",
+    "meeting_link",
     "max_members",
 )
 
@@ -66,12 +71,17 @@ def text_of(form, key):
 
 
 def has_required_fields(form):
-    """True when every field create_group() requires has a value.
+    """True when the form has every field create_group() requires.
 
-    When something is missing, the duplicate check stays out of the way and
-    lets create_group() show its own error message.
+    Uses the same rule as create_group(): a field only counts as missing when
+    it is not in the form at all. A blank or all spaces value still counts as
+    present, so it cannot skip the duplicate check while create_group() goes
+    on to save the group. When a field really is missing, the duplicate check
+    stays out of the way and lets create_group() show its own error message.
     """
-    return all(text_of(form, key) for key in REQUIRED_FIELDS)
+    if not form:
+        return False
+    return all(form.get(key) is not None for key in REQUIRED_FIELDS)
 
 
 def proposal_from_form(form):

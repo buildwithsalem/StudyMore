@@ -281,12 +281,16 @@ class ExactDuplicateTests(DuplicateTestCase):
 
     def test_required_fields_check(self):
         form = {
-            "group_name": "Exam Review", "course_code": "CSE 3311",
+            "group_name": "Exam Review", "course_code": "CSE 3311", "section": "",
             "description": "Practice", "meeting_type": "Online",
-            "meeting_date": day(38), "meeting_time": "18:00", "max_members": "4",
+            "meeting_date": day(38), "meeting_time": "18:00",
+            "location": "", "meeting_link": "https://example.com", "max_members": "4",
         }
         self.assertTrue(has_required_fields(form))
+        # Blank values still count as present, the same as in create_group().
         form["description"] = "   "
+        self.assertTrue(has_required_fields(form))
+        del form["description"]
         self.assertFalse(has_required_fields(form))
 
 
@@ -413,6 +417,14 @@ class RouteTests(DuplicateTestCase):
         response = self.client.post("/create-group", data=self.form())
         self.assertEqual(response.status_code, 302)
         self.assertIn("/login", response.headers["Location"])
+
+    def test_blank_description_still_gets_the_duplicate_check(self):
+        self.add_group("CSE 3311 Exam Review Group", meeting_date=FUTURE_DATE, meeting_time="10:00")
+        self.log_in()
+        response = self.client.post("/create-group", data=self.form(description="   "))
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Similar study groups already exist", response.data)
+        self.assertEqual(self.group_count(), 1)
 
     def test_missing_field_is_left_to_create_group(self):
         self.add_group("Exam Review", meeting_date=FUTURE_DATE)
