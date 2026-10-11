@@ -13,6 +13,7 @@
     <span class="brand">StudyMore</span>
 
     <nav>
+        <a href="{{ url_for('dashboard.dashboard') }}">Dashboard</a>
         <a href="{{ url_for('search.search') }}">Search Groups</a>
         <a href="{{ url_for('create_group') }}" class="active">Create Group</a>
         <a href="{{ url_for('my_groups') }}">My Groups</a>
