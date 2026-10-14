@@ -11,6 +11,7 @@ from matching import (
 )
 from validators import safe_meeting_url, validate_meeting_link
 from search_query import derive_display_status
+from search_query import meeting_has_passed
 
 import sqlite3
 
@@ -204,6 +205,16 @@ def create_group():
 
         if max_members < 2:
             return "Max members must be at least 2", 400
+
+        if meeting_has_passed(meeting_date, meeting_time):
+            return render_template(
+                "create_group.html",
+                error="Meeting date and time must be in the future.",
+                form=request.form,
+                partner_id=partner_id,
+                request_id=request_id,
+                partner_request_id=partner_request_id
+            )
 
         if meeting_type == "In-Person" and not location.strip():
             return render_template(
@@ -927,6 +938,14 @@ def register():
 
         if not name or not email or not password or not confirm_password:
             return "Name, email, password, and confirm password are required", 400
+        
+        UTA_EMAIL_DOMAIN = "@mavs.uta.edu"
+        if not email.endswith(UTA_EMAIL_DOMAIN):
+            return (
+                f"Please register with your UTA student email address "
+                f"(must end in {UTA_EMAIL_DOMAIN})",
+                400
+            )
 
         if password != confirm_password:
             return "Password and confirmation do not match", 400
