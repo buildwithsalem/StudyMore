@@ -4,8 +4,10 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Create Account | StudyMore</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-</head>
+    </head>
 
 <body class="auth-page">
 
@@ -41,6 +43,7 @@
                     placeholder="Enter your email"
                     required>
             </label>
+            <p class="form-hint">Must be a UTA student email (ends in @mavs.uta.edu)</p>
 
             <label>
                 <span>Password <span class="required">*</span></span>
