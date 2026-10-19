@@ -1,3 +1,9 @@
+v0.4 - Iteration 2 polish - [Completed 10/18/2026]
+- New color theme with hover effects and status colors across all pages
+- Profile tab: students can add their major, courses, study style, and what they can help with
+- My Groups filters: status, meeting type, course, and groups you created
+- "You created this" badge on My Groups
+
 v0.3 - Iteration 2 - [Completed 10/10/2026]
 - Group status management: creators can Mark Completed, Cancel Group, or Reopen Group
 - Groups show as Completed automatically once the meeting time has passed
