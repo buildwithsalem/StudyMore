@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>My Groups | StudyMore</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 
@@ -21,6 +21,7 @@
         <a href="{{ url_for('my_groups') }}" class="active">My Groups</a>
         <a href="{{ url_for('study_request') }}">Find My Match</a>
         <a href="{{ url_for('availability') }}">Availability</a>
+        <a href="{{ url_for('profile.profile') }}">Profile</a>
         <a href="{{ url_for('logout') }}">Log Out</a>
     </nav>
 </header>
@@ -31,6 +32,58 @@
         <h1>My Study Groups</h1>
         <p>View and manage the study groups you've joined.</p>
     </div>
+
+    {% if total_count > 0 %}
+
+        <form class="search-form my-groups-filters" method="GET" action="{{ url_for('my_groups') }}">
+            <fieldset class="filters">
+                <legend>Filters</legend>
+
+                <label for="status">
+                    <span>Status</span>
+                    <select id="status" name="status">
+                        <option value="">Any</option>
+                        {% for option in group_statuses %}
+                            <option value="{{ option }}" {% if filters.status == option %}selected{% endif %}>{{ option }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+
+                <label for="meeting_type">
+                    <span>Meeting type</span>
+                    <select id="meeting_type" name="meeting_type">
+                        <option value="">Any</option>
+                        {% for option in meeting_types %}
+                            <option value="{{ option }}" {% if filters.meeting_type == option %}selected{% endif %}>{{ option }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+
+                <label for="course">
+                    <span>Course</span>
+                    <select id="course" name="course">
+                        <option value="">Any</option>
+                        {% for option in courses %}
+                            <option value="{{ option }}" {% if filters.course == option %}selected{% endif %}>{{ option }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+
+                <label class="checkbox" for="created_by_me">
+                    <input type="checkbox" id="created_by_me" name="created_by_me" value="on"
+                           {% if filters.created_by_me %}checked{% endif %}>
+                    <span>Created by me</span>
+                </label>
+
+                <button type="submit" class="primary">Apply</button>
+
+                <a class="clear" href="{{ url_for('my_groups') }}">Clear filters</a>
+            </fieldset>
+        </form>
+
+        <p class="result-count">Showing {{ groups|length }} of {{ total_count }} group{{ '' if total_count == 1 else 's' }}</p>
+
+    {% endif %}
 
     {% if groups %}
 
@@ -43,7 +96,12 @@
                     <div class="my-group-header">
 
                         <div>
-                            <h2>{{ group["group_name"] }}</h2>
+                            <h2>
+                                {{ group["group_name"] }}
+                                {% if group["is_creator"] %}
+                                    <span class="badge">You created this</span>
+                                {% endif %}
+                            </h2>
 
                             <p class="course">
                                 {{ group["course_code"] }}
@@ -91,13 +149,12 @@
                             </div>
                         {% endif %}
 
-                        {% set safe_link = group["meeting_link"]|safe_meeting_url %}
-                        {% if safe_link %}
+                        {% if group["meeting_link"] %}
                             <div>
                                 <span class="info-label">Meeting Link</span>
                                 <a
                                     class="meeting-link"
-                                    href="{{ safe_link }}"
+                                    href="{{ group['meeting_link'] }}"
                                     target="_blank"
                                     rel="noopener noreferrer">
                                     Open meeting link
@@ -117,15 +174,15 @@
 
                         <form
                             method="POST"
-                        action="{{ url_for('leave_group', group_id=group['id']) }}">
+                            action="{{ url_for('leave_group', group_id=group['id']) }}">
 
-                        <input type="hidden" name="next" value="my_groups">
+                            <input type="hidden" name="next" value="my_groups">
 
-                        <button type="submit" class="danger-button">
-                            Leave Group
-                        </button>
+                            <button type="submit" class="danger-button">
+                                Leave Group
+                            </button>
 
-                    </form>
+                        </form>
 
                     </div>
 
@@ -133,6 +190,17 @@
 
             {% endfor %}
 
+        </div>
+
+    {% elif total_count > 0 %}
+
+        <div class="empty-state">
+            <h2>No groups match these filters</h2>
+            <p>Try a different status, meeting type, or course.</p>
+
+            <a class="primary" href="{{ url_for('my_groups') }}">
+                Clear filters
+            </a>
         </div>
 
     {% else %}

@@ -24,6 +24,8 @@ app.add_template_filter(safe_meeting_url, "safe_meeting_url")
 import os
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", os.urandom(24))
 app.register_blueprint(search_bp)
+from student_profile import profile_bp
+app.register_blueprint(profile_bp)
 app.register_blueprint(duplicate_bp)
 app.register_blueprint(dashboard_bp)
 
@@ -580,15 +582,18 @@ def leave_group(group_id):
     return redirect(url_for("group_details", group_id=group_id))
 
 
+from search_query import GROUP_STATUSES, MEETING_TYPES, normalize_course_code
+
+
 @app.route("/my-groups", methods=["GET"])
 def my_groups():
+    # my-groups-filters
     user_id = session.get("user_id")
 
     if user_id is None:
         return redirect(url_for("login"))
 
     conn = get_db_connection()
-    conn.row_factory = sqlite3.Row
 
     rows = conn.execute("""
         SELECT
@@ -602,16 +607,56 @@ def my_groups():
 
     conn.close()
 
-    groups = []
+    all_groups = []
     for row in rows:
         group = dict(row)
         group["display_status"] = derive_display_status(
             row["status"], row["current_members"], row["max_members"],
             row["meeting_date"], row["meeting_time"]
         )
-        groups.append(group)
+        group["is_creator"] = row["creator_user_id"] == user_id
+        all_groups.append(group)
 
-    return render_template("my_groups.html", groups=groups)
+    courses = sorted({group["course_code"] for group in all_groups})
+
+    status = (request.args.get("status") or "").strip().title()
+    meeting_type = (request.args.get("meeting_type") or "").strip()
+    course = (request.args.get("course") or "").strip()
+    created_by_me = (request.args.get("created_by_me") or "").lower() in (
+        "on", "true", "1", "yes"
+    )
+
+    # Values that are not on the lists are ignored instead of causing an error.
+    if status not in GROUP_STATUSES:
+        status = ""
+    if meeting_type not in MEETING_TYPES:
+        meeting_type = ""
+
+    groups = all_groups
+    if status:
+        groups = [g for g in groups if g["display_status"] == status]
+    if meeting_type:
+        groups = [g for g in groups if g["meeting_type"] == meeting_type]
+    if course:
+        wanted = normalize_course_code(course)
+        groups = [g for g in groups if normalize_course_code(g["course_code"]) == wanted]
+    if created_by_me:
+        groups = [g for g in groups if g["is_creator"]]
+
+    return render_template(
+        "my_groups.html",
+        groups=groups,
+        total_count=len(all_groups),
+        courses=courses,
+        group_statuses=GROUP_STATUSES,
+        meeting_types=MEETING_TYPES,
+        filters={
+            "status": status,
+            "meeting_type": meeting_type,
+            "course": course,
+            "created_by_me": created_by_me,
+        },
+    )
 
 
 @app.route("/availability", methods=["GET", "POST"])
