@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>My Groups | StudyMore</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+
+<header class="topbar">
+    <span class="brand">StudyMore</span>
+
+    <nav>
+        <a href="{{ url_for('dashboard.dashboard') }}">Dashboard</a>
+        <a href="{{ url_for('search.search') }}">Search Groups</a>
+        <a href="{{ url_for('create_group') }}">Create Group</a>
+        <a href="{{ url_for('my_groups') }}" class="active">My Groups</a>
+        <a href="{{ url_for('study_request') }}">Find My Match</a>
+        <a href="{{ url_for('availability') }}">Availability</a>
+        <a href="{{ url_for('profile.profile') }}">Profile</a>
+        <a href="{{ url_for('logout') }}">Log Out</a>
+    </nav>
+</header>
+
+<main class="my-groups-main">
+
+    <div class="page-heading">
+        <h1>My Study Groups</h1>
+        <p>View and manage the study groups you've joined.</p>
+    </div>
+
+    {% if total_count > 0 %}
+
+        <form class="search-form my-groups-filters" method="GET" action="{{ url_for('my_groups') }}">
+            <fieldset class="filters">
+                <legend>Filters</legend>
+
+                <label for="status">
+                    <span>Status</span>
+                    <select id="status" name="status">
+                        <option value="">Any</option>
+                        {% for option in group_statuses %}
+                            <option value="{{ option }}" {% if filters.status == option %}selected{% endif %}>{{ option }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+
+                <label for="meeting_type">
+                    <span>Meeting type</span>
+                    <select id="meeting_type" name="meeting_type">
+                        <option value="">Any</option>
+                        {% for option in meeting_types %}
+                            <option value="{{ option }}" {% if filters.meeting_type == option %}selected{% endif %}>{{ option }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+
+                <label for="course">
+                    <span>Course</span>
+                    <select id="course" name="course">
+                        <option value="">Any</option>
+                        {% for option in courses %}
+                            <option value="{{ option }}" {% if filters.course == option %}selected{% endif %}>{{ option }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+
+                <label class="checkbox" for="created_by_me">
+                    <input type="checkbox" id="created_by_me" name="created_by_me" value="on"
+                           {% if filters.created_by_me %}checked{% endif %}>
+                    <span>Created by me</span>
+                </label>
+
+                <button type="submit" class="primary">Apply</button>
+
+                <a class="clear" href="{{ url_for('my_groups') }}">Clear filters</a>
+            </fieldset>
+        </form>
+
+        <p class="result-count">Showing {{ groups|length }} of {{ total_count }} group{{ '' if total_count == 1 else 's' }}</p>
+
+    {% endif %}
+
+    {% if groups %}
+
+        <div class="my-groups-list">
+
+            {% for group in groups %}
+
+                <article class="my-group-card">
+
+                    <div class="my-group-header">
+
+                        <div>
+                            <h2>
+                                {{ group["group_name"] }}
+                                {% if group["is_creator"] %}
+                                    <span class="badge">You created this</span>
+                                {% endif %}
+                            </h2>
+
+                            <p class="course">
+                                {{ group["course_code"] }}
+                                {% if group["section"] %}
+                                    &middot; Section {{ group["section"] }}
+                                {% endif %}
+                            </p>
+                        </div>
+
+                        <span class="status status-{{ group['display_status']|lower }}">
+                            {{ group["display_status"] }}
+                        </span>
+
+                    </div>
+
+                    <div class="my-group-info">
+
+                        <div>
+                            <span class="info-label">Meeting Type</span>
+                            <span class="info-value">
+                                {{ group["meeting_type"] }}
+                            </span>
+                        </div>
+
+                        <div>
+                            <span class="info-label">Date</span>
+                            <span class="info-value">
+                                {{ group["meeting_date"] }}
+                            </span>
+                        </div>
+
+                        <div>
+                            <span class="info-label">Time</span>
+                            <span class="info-value">
+                                {{ group["meeting_time"] }}
+                            </span>
+                        </div>
+
+                        {% if group["location"] %}
+                            <div>
+                                <span class="info-label">Location</span>
+                                <span class="info-value">
+                                    {{ group["location"] }}
+                                </span>
+                            </div>
+                        {% endif %}
+
+                        {% if group["meeting_link"] %}
+                            <div>
+                                <span class="info-label">Meeting Link</span>
+                                <a
+                                    class="meeting-link"
+                                    href="{{ group['meeting_link'] }}"
+                                    target="_blank"
+                                    rel="noopener noreferrer">
+                                    Open meeting link
+                                </a>
+                            </div>
+                        {% endif %}
+
+                    </div>
+
+                    <div class="my-group-actions">
+
+                        <a
+                            class="secondary"
+                            href="{{ url_for('group_details', group_id=group['id']) }}">
+                            View Details
+                        </a>
+
+                        <form
+                            method="POST"
+                            action="{{ url_for('leave_group', group_id=group['id']) }}">
+
+                            <input type="hidden" name="next" value="my_groups">
+
+                            <button type="submit" class="danger-button">
+                                Leave Group
+                            </button>
+
+                        </form>
+
+                    </div>
+
+                </article>
+
+            {% endfor %}
+
+        </div>
+
+    {% elif total_count > 0 %}
+
+        <div class="empty-state">
+            <h2>No groups match these filters</h2>
+            <p>Try a different status, meeting type, or course.</p>
+
+            <a class="primary" href="{{ url_for('my_groups') }}">
+                Clear filters
+            </a>
+        </div>
+
+    {% else %}
+
+        <div class="empty-state">
+            <h2>No study groups yet</h2>
+            <p>You haven't joined any study groups yet.</p>
+
+            <a class="primary" href="{{ url_for('search.search') }}">
+                Find Study Groups
+            </a>
+        </div>
+
+    {% endif %}
+
+</main>
+
+</body>
+</html>

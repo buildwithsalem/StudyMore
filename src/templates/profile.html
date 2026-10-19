@@ -7,6 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
 </head>
 
 <body>
@@ -14,7 +15,12 @@
 <header class="topbar">
     <span class="brand">StudyMore</span>
 
-    <nav>
+
+    <button type="button" class="menu-toggle" aria-label="Toggle menu" aria-controls="site-nav" aria-expanded="false" onclick="var n=document.getElementById('site-nav');n.classList.toggle('open');this.classList.toggle('open');this.setAttribute('aria-expanded', n.classList.contains('open'));">
+        <span></span><span></span><span></span>
+    </button>
+
+    <nav id="site-nav">
         <a href="{{ url_for('dashboard.dashboard') }}">Dashboard</a>
         <a href="{{ url_for('search.search') }}">Search Groups</a>
         <a href="{{ url_for('create_group') }}">Create Group</a>
@@ -25,6 +31,8 @@
         <a href="{{ url_for('logout') }}">Log Out</a>
     </nav>
 </header>
+<div class="crumbs"><a href="#" class="back-link" onclick="history.back();return false;">&larr; Back</a></div>
+
 
 <main class="create-main profile-main">
 
