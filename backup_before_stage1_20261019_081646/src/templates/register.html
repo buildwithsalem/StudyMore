@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Create Account | StudyMore</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    </head>
+
+<body class="auth-page">
+
+<header class="topbar">
+    <span class="brand">StudyMore</span>
+</header>
+
+<main class="auth-main">
+
+    <div class="auth-card">
+
+        <div class="auth-heading">
+            <h1>Create an Account</h1>
+            <p>Join StudyMore and start finding study groups for your courses.</p>
+        </div>
+
+        <form method="POST" class="auth-form">
+
+            <label>
+                <span>Name <span class="required">*</span></span>
+                <input
+                    name="name"
+                    type="text"
+                    placeholder="Enter your name"
+                    required>
+            </label>
+
+            <label>
+                <span>Email <span class="required">*</span></span>
+                <input
+                    name="email"
+                    type="email"
+                    placeholder="Enter your email"
+                    required>
+            </label>
+            <p class="form-hint">Must be a UTA student email (ends in @mavs.uta.edu)</p>
+
+            <label>
+                <span>Password <span class="required">*</span></span>
+                <input
+                    name="password"
+                    type="password"
+                    placeholder="Create a password"
+                    required>
+            </label>
+
+            <label>
+                <span>Confirm Password <span class="required">*</span></span>
+                <input
+                    name="confirm_password"
+                    type="password"
+                    placeholder="Confirm your password"
+                    required>
+            </label>
+
+            <p class="required-note">
+                <span class="required">*</span> Required fields
+            </p>
+
+            <button type="submit" class="primary auth-button">
+                Sign Up
+            </button>
+
+        </form>
+
+        <p class="auth-switch">
+            Already have an account?
+            <a href="{{ url_for('login') }}">Log in</a>
+        </p>
+
+    </div>
+
+</main>
+
+</body>
+</html>

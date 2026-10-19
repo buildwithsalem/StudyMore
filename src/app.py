@@ -973,6 +973,32 @@ def study_matches(request_id):
     )
 
 
+@app.route("/study-request/<int:request_id>/close", methods=["POST"])
+def close_study_request(request_id):
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
+    user_id = session["user_id"]
+
+    conn = get_db_connection()
+    conn.row_factory = sqlite3.Row
+
+    study_request = get_user_study_request(conn, request_id, user_id)
+
+    if study_request is None:
+        conn.close()
+        return "Study Request not found.", 404
+
+    conn.execute(
+        "UPDATE study_requests SET status = 'closed' WHERE id = ?",
+        (request_id,)
+    )
+    conn.commit()
+    conn.close()
+
+    return redirect(url_for("dashboard.dashboard"))
+
+
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":

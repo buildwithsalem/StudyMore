@@ -1,0 +1,598 @@
+diff --git a/src/app.py b/src/app.py
+index cadd179..2b5d86e 100644
+--- a/src/app.py
++++ b/src/app.py
+@@ -973,6 +973,32 @@ def study_matches(request_id):
+     )
+ 
+ 
++@app.route("/study-request/<int:request_id>/close", methods=["POST"])
++def close_study_request(request_id):
++    if "user_id" not in session:
++        return redirect(url_for("login"))
++
++    user_id = session["user_id"]
++
++    conn = get_db_connection()
++    conn.row_factory = sqlite3.Row
++
++    study_request = get_user_study_request(conn, request_id, user_id)
++
++    if study_request is None:
++        conn.close()
++        return "Study Request not found.", 404
++
++    conn.execute(
++        "UPDATE study_requests SET status = 'closed' WHERE id = ?",
++        (request_id,)
++    )
++    conn.commit()
++    conn.close()
++
++    return redirect(url_for("dashboard.dashboard"))
++
++
+ @app.route("/register", methods=["GET", "POST"])
+ def register():
+     if request.method == "POST":
+diff --git a/src/static/favicon.svg b/src/static/favicon.svg
+new file mode 100644
+index 0000000..cbbcb60
+--- /dev/null
++++ b/src/static/favicon.svg
+@@ -0,0 +1,12 @@
++<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
++  <defs>
++    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
++      <stop offset="0" stop-color="#8a6cf7"/>
++      <stop offset="1" stop-color="#6c4ef5"/>
++    </linearGradient>
++  </defs>
++  <rect width="64" height="64" rx="18" fill="url(#g)"/>
++  <path d="M20 40 L32 20 L44 40" fill="none" stroke="#fff" stroke-width="5"
++        stroke-linecap="round" stroke-linejoin="round"/>
++  <circle cx="32" cy="46" r="4" fill="#fff"/>
++</svg>
+diff --git a/src/static/style.css b/src/static/style.css
+index fd75893..a64d49f 100644
+--- a/src/static/style.css
++++ b/src/static/style.css
+@@ -38,15 +38,81 @@ th, td {
+   padding: 14px 28px;
+   background: #fff;
+   border-bottom: 1px solid var(--line);
++  position: relative;
+ }
+ .brand { font-weight: 700; font-size: 18px; color: var(--accent); }
+-.topbar nav { display: flex; gap: 18px; }
++.topbar nav { display: flex; gap: 18px; flex-wrap: wrap; }
+ .topbar nav a { color: var(--muted); text-decoration: none; font-size: 14px; }
+ .topbar nav a.active, .topbar nav a:hover { color: var(--ink); }
+ 
++/* hamburger menu button, hidden on desktop */
++.menu-toggle {
++  display: none;
++  margin-left: auto;
++  width: 36px;
++  height: 36px;
++  border: none;
++  background: none;
++  cursor: pointer;
++  flex-direction: column;
++  justify-content: center;
++  align-items: center;
++  gap: 5px;
++  padding: 0;
++}
++.menu-toggle span {
++  display: block;
++  width: 22px;
++  height: 2px;
++  background: var(--ink);
++  border-radius: 2px;
++  transition: transform 0.2s ease, opacity 0.2s ease;
++}
++.menu-toggle.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
++.menu-toggle.open span:nth-child(2) { opacity: 0; }
++.menu-toggle.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
++
++/* back link / breadcrumb */
++.crumbs { padding: 10px 28px 0; }
++.back-link {
++  color: var(--accent);
++  text-decoration: none;
++  font-size: 13px;
++  font-weight: 600;
++}
++.back-link:hover { text-decoration: underline; }
++
+ main { max-width: 900px; margin: 0 auto; padding: 28px; }
+ h1 { font-size: 24px; margin: 0 0 18px; }
+ 
++/* mobile layout */
++@media (max-width: 720px) {
++  .topbar {
++    flex-wrap: wrap;
++    padding: 12px 16px;
++  }
++  .menu-toggle { display: flex; }
++  .topbar nav#site-nav {
++    display: none;
++    flex-direction: column;
++    gap: 2px;
++    width: 100%;
++    order: 3;
++    padding-top: 10px;
++    border-top: 1px solid var(--line);
++    margin-top: 10px;
++  }
++  .topbar nav#site-nav.open { display: flex; }
++  .topbar nav#site-nav a {
++    padding: 10px 4px;
++    border-bottom: 1px solid var(--line);
++  }
++  .crumbs { padding: 10px 16px 0; }
++  main { padding: 16px; }
++  h1 { font-size: 20px; }
++  table { display: block; overflow-x: auto; white-space: nowrap; }
++}
++
+ /* search form */
+ .search-form {
+   background: #fff;
+@@ -766,6 +832,16 @@ input[type="text"]:focus, select:focus {
+   font-size: 18px;
+ }
+ 
++.request-summary-actions {
++  display: flex;
++  align-items: center;
++  gap: 10px;
++  flex-wrap: wrap;
++}
++.request-summary-actions form { margin: 0; }
++.danger-text { color: var(--danger); border-color: var(--danger); }
++.danger-text:hover { background: #fde6ec; }
++
+ .request-summary p {
+   margin: 0;
+   color: var(--muted);
+diff --git a/src/templates/availability.html b/src/templates/availability.html
+index 1fe980f..0c40f51 100644
+--- a/src/templates/availability.html
++++ b/src/templates/availability.html
+@@ -7,6 +7,7 @@
+     <link rel="preconnect" href="https://fonts.googleapis.com">
+     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
++    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+ </head>
+ 
+ <body>
+@@ -14,7 +15,12 @@
+ <header class="topbar">
+     <span class="brand">StudyMore</span>
+ 
+-    <nav>
++    
++    <button type="button" class="menu-toggle" aria-label="Toggle menu" aria-controls="site-nav" aria-expanded="false" onclick="var n=document.getElementById('site-nav');n.classList.toggle('open');this.classList.toggle('open');this.setAttribute('aria-expanded', n.classList.contains('open'));">
++        <span></span><span></span><span></span>
++    </button>
++
++    <nav id="site-nav">
+         <a href="{{ url_for('dashboard.dashboard') }}">Dashboard</a>
+         <a href="{{ url_for('search.search') }}">Search Groups</a>
+         <a href="{{ url_for('create_group') }}">Create Group</a>
+@@ -25,6 +31,8 @@
+         <a href="{{ url_for('logout') }}">Log Out</a>
+     </nav>
+ </header>
++<div class="crumbs"><a href="#" class="back-link" onclick="history.back();return false;">&larr; Back</a></div>
++
+ 
+ <main class="availability-main">
+ 
+diff --git a/src/templates/availability_heatmap.html b/src/templates/availability_heatmap.html
+index c9ae0d5..28339c9 100644
+--- a/src/templates/availability_heatmap.html
++++ b/src/templates/availability_heatmap.html
+@@ -6,13 +6,19 @@
+     <link rel="preconnect" href="https://fonts.googleapis.com">
+     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
++    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+ </head>
+ 
+ <body>
+ 
+ <header class="topbar">
+     <span class="brand">StudyMore</span>
+-    <nav>
++    
++    <button type="button" class="menu-toggle" aria-label="Toggle menu" aria-controls="site-nav" aria-expanded="false" onclick="var n=document.getElementById('site-nav');n.classList.toggle('open');this.classList.toggle('open');this.setAttribute('aria-expanded', n.classList.contains('open'));">
++        <span></span><span></span><span></span>
++    </button>
++
++    <nav id="site-nav">
+         <a href="{{ url_for('dashboard.dashboard') }}">Dashboard</a>
+         <a href="{{ url_for('search.search') }}">Search Groups</a>
+         <a href="{{ url_for('create_group') }}">Create Group</a>
+@@ -23,6 +29,8 @@
+         <a href="{{ url_for('logout') }}">Log Out</a>
+     </nav>
+ </header>
++<div class="crumbs"><a href="#" class="back-link" onclick="history.back();return false;">&larr; Back</a></div>
++
+ 
+ <main>
+     <h1>Group Availability Heatmap</h1>
+diff --git a/src/templates/create_group.html b/src/templates/create_group.html
+index 0cf761f..474acc2 100644
+--- a/src/templates/create_group.html
++++ b/src/templates/create_group.html
+@@ -7,6 +7,7 @@
+     <link rel="preconnect" href="https://fonts.googleapis.com">
+     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
++    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+     </head>
+ 
+ <body>
+@@ -14,7 +15,12 @@
+ <header class="topbar">
+     <span class="brand">StudyMore</span>
+ 
+-    <nav>
++    
++    <button type="button" class="menu-toggle" aria-label="Toggle menu" aria-controls="site-nav" aria-expanded="false" onclick="var n=document.getElementById('site-nav');n.classList.toggle('open');this.classList.toggle('open');this.setAttribute('aria-expanded', n.classList.contains('open'));">
++        <span></span><span></span><span></span>
++    </button>
++
++    <nav id="site-nav">
+         <a href="{{ url_for('dashboard.dashboard') }}">Dashboard</a>
+         <a href="{{ url_for('search.search') }}">Search Groups</a>
+         <a href="{{ url_for('create_group') }}" class="active">Create Group</a>
+@@ -25,6 +31,8 @@
+         <a href="{{ url_for('logout') }}">Log Out</a>
+     </nav>
+ </header>
++<div class="crumbs"><a href="#" class="back-link" onclick="history.back();return false;">&larr; Back</a></div>
++
+ 
+ <main class="create-main">
+ 
+diff --git a/src/templates/dashboard.html b/src/templates/dashboard.html
+index ad73b28..4334f81 100644
+--- a/src/templates/dashboard.html
++++ b/src/templates/dashboard.html
+@@ -7,13 +7,19 @@
+   <link rel="preconnect" href="https://fonts.googleapis.com">
+   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+-  
++  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
++
+ </head>
+ <body>
+ 
+ <header class="topbar">
+   <span class="brand">StudyMore</span>
+-  <nav>
++  
++    <button type="button" class="menu-toggle" aria-label="Toggle menu" aria-controls="site-nav" aria-expanded="false" onclick="var n=document.getElementById('site-nav');n.classList.toggle('open');this.classList.toggle('open');this.setAttribute('aria-expanded', n.classList.contains('open'));">
++        <span></span><span></span><span></span>
++    </button>
++
++    <nav id="site-nav">
+     <a href="{{ url_for('dashboard.dashboard') }}" class="active">Dashboard</a>
+     <a href="{{ url_for('search.search') }}">Search Groups</a>
+     <a href="{{ url_for('create_group') }}">Create Group</a>
+diff --git a/src/templates/duplicate_warning.html b/src/templates/duplicate_warning.html
+index 5268161..c08a229 100644
+--- a/src/templates/duplicate_warning.html
++++ b/src/templates/duplicate_warning.html
+@@ -7,6 +7,7 @@
+     <link rel="preconnect" href="https://fonts.googleapis.com">
+     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
++    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+ </head>
+ 
+ <body>
+@@ -14,7 +15,12 @@
+ <header class="topbar">
+     <span class="brand">StudyMore</span>
+ 
+-    <nav>
++    
++    <button type="button" class="menu-toggle" aria-label="Toggle menu" aria-controls="site-nav" aria-expanded="false" onclick="var n=document.getElementById('site-nav');n.classList.toggle('open');this.classList.toggle('open');this.setAttribute('aria-expanded', n.classList.contains('open'));">
++        <span></span><span></span><span></span>
++    </button>
++
++    <nav id="site-nav">
+         <a href="{{ url_for('dashboard.dashboard') }}">Dashboard</a>
+         <a href="{{ url_for('search.search') }}">Search Groups</a>
+         <a href="{{ url_for('create_group') }}" class="active">Create Group</a>
+@@ -25,6 +31,8 @@
+         <a href="{{ url_for('logout') }}">Log Out</a>
+     </nav>
+ </header>
++<div class="crumbs"><a href="#" class="back-link" onclick="history.back();return false;">&larr; Back</a></div>
++
+ 
+ <main class="matches-main">
+ 
+diff --git a/src/templates/group_details.html b/src/templates/group_details.html
+index bff72f1..9c367dd 100644
+--- a/src/templates/group_details.html
++++ b/src/templates/group_details.html
+@@ -7,6 +7,7 @@
+     <link rel="preconnect" href="https://fonts.googleapis.com">
+     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
++    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+     </head>
+ 
+ <body>
+@@ -14,7 +15,12 @@
+ <header class="topbar">
+     <span class="brand">StudyMore</span>
+ 
+-    <nav>
++    
++    <button type="button" class="menu-toggle" aria-label="Toggle menu" aria-controls="site-nav" aria-expanded="false" onclick="var n=document.getElementById('site-nav');n.classList.toggle('open');this.classList.toggle('open');this.setAttribute('aria-expanded', n.classList.contains('open'));">
++        <span></span><span></span><span></span>
++    </button>
++
++    <nav id="site-nav">
+         <a href="{{ url_for('dashboard.dashboard') }}">Dashboard</a>
+         <a href="{{ url_for('search.search') }}">Search Groups</a>
+         <a href="{{ url_for('create_group') }}">Create Group</a>
+@@ -25,6 +31,8 @@
+         <a href="{{ url_for('logout') }}">Log Out</a>
+     </nav>
+ </header>
++<div class="crumbs"><a href="#" class="back-link" onclick="history.back();return false;">&larr; Back</a></div>
++
+ 
+ <main class="details-main">
+ 
+diff --git a/src/templates/login.html b/src/templates/login.html
+index 3de97f5..70ef8fb 100644
+--- a/src/templates/login.html
++++ b/src/templates/login.html
+@@ -7,6 +7,7 @@
+     <link rel="preconnect" href="https://fonts.googleapis.com">
+     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
++    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+     </head>
+ 
+ <body class="auth-page">
+diff --git a/src/templates/my_groups.html b/src/templates/my_groups.html
+index 35ad7e5..c448691 100644
+--- a/src/templates/my_groups.html
++++ b/src/templates/my_groups.html
+@@ -7,6 +7,7 @@
+     <link rel="preconnect" href="https://fonts.googleapis.com">
+     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
++    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+ </head>
+ 
+ <body>
+@@ -14,7 +15,12 @@
+ <header class="topbar">
+     <span class="brand">StudyMore</span>
+ 
+-    <nav>
++    
++    <button type="button" class="menu-toggle" aria-label="Toggle menu" aria-controls="site-nav" aria-expanded="false" onclick="var n=document.getElementById('site-nav');n.classList.toggle('open');this.classList.toggle('open');this.setAttribute('aria-expanded', n.classList.contains('open'));">
++        <span></span><span></span><span></span>
++    </button>
++
++    <nav id="site-nav">
+         <a href="{{ url_for('dashboard.dashboard') }}">Dashboard</a>
+         <a href="{{ url_for('search.search') }}">Search Groups</a>
+         <a href="{{ url_for('create_group') }}">Create Group</a>
+@@ -25,6 +31,8 @@
+         <a href="{{ url_for('logout') }}">Log Out</a>
+     </nav>
+ </header>
++<div class="crumbs"><a href="#" class="back-link" onclick="history.back();return false;">&larr; Back</a></div>
++
+ 
+ <main class="my-groups-main">
+ 
+@@ -149,12 +157,13 @@
+                             </div>
+                         {% endif %}
+ 
+-                        {% if group["meeting_link"] %}
++                        {% set safe_link = group["meeting_link"]|safe_meeting_url %}
++                        {% if safe_link %}
+                             <div>
+                                 <span class="info-label">Meeting Link</span>
+                                 <a
+                                     class="meeting-link"
+-                                    href="{{ group['meeting_link'] }}"
++                                    href="{{ safe_link }}"
+                                     target="_blank"
+                                     rel="noopener noreferrer">
+                                     Open meeting link
+diff --git a/src/templates/profile.html b/src/templates/profile.html
+index bb8979f..280ecec 100644
+--- a/src/templates/profile.html
++++ b/src/templates/profile.html
+@@ -7,6 +7,7 @@
+     <link rel="preconnect" href="https://fonts.googleapis.com">
+     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
++    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+ </head>
+ 
+ <body>
+@@ -14,7 +15,12 @@
+ <header class="topbar">
+     <span class="brand">StudyMore</span>
+ 
+-    <nav>
++    
++    <button type="button" class="menu-toggle" aria-label="Toggle menu" aria-controls="site-nav" aria-expanded="false" onclick="var n=document.getElementById('site-nav');n.classList.toggle('open');this.classList.toggle('open');this.setAttribute('aria-expanded', n.classList.contains('open'));">
++        <span></span><span></span><span></span>
++    </button>
++
++    <nav id="site-nav">
+         <a href="{{ url_for('dashboard.dashboard') }}">Dashboard</a>
+         <a href="{{ url_for('search.search') }}">Search Groups</a>
+         <a href="{{ url_for('create_group') }}">Create Group</a>
+@@ -25,6 +31,8 @@
+         <a href="{{ url_for('logout') }}">Log Out</a>
+     </nav>
+ </header>
++<div class="crumbs"><a href="#" class="back-link" onclick="history.back();return false;">&larr; Back</a></div>
++
+ 
+ <main class="create-main profile-main">
+ 
+diff --git a/src/templates/register.html b/src/templates/register.html
+index 4de96cf..92903f1 100644
+--- a/src/templates/register.html
++++ b/src/templates/register.html
+@@ -7,6 +7,7 @@
+     <link rel="preconnect" href="https://fonts.googleapis.com">
+     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
++    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+     </head>
+ 
+ <body class="auth-page">
+diff --git a/src/templates/search.html b/src/templates/search.html
+index 0096547..95dbf6c 100644
+--- a/src/templates/search.html
++++ b/src/templates/search.html
+@@ -7,6 +7,7 @@
+     <link rel="preconnect" href="https://fonts.googleapis.com">
+     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
++    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+     </head>
+ 
+ <body>
+@@ -14,7 +15,12 @@
+ <header class="topbar">
+     <span class="brand">StudyMore</span>
+ 
+-    <nav>
++    
++    <button type="button" class="menu-toggle" aria-label="Toggle menu" aria-controls="site-nav" aria-expanded="false" onclick="var n=document.getElementById('site-nav');n.classList.toggle('open');this.classList.toggle('open');this.setAttribute('aria-expanded', n.classList.contains('open'));">
++        <span></span><span></span><span></span>
++    </button>
++
++    <nav id="site-nav">
+         <a href="{{ url_for('dashboard.dashboard') }}">Dashboard</a>
+         <a class="active" href="{{ url_for('search.search') }}">Search Groups</a>
+         <a href="{{ url_for('create_group') }}">Create Group</a>
+@@ -25,6 +31,8 @@
+         <a href="{{ url_for('logout') }}">Log Out</a>
+     </nav>
+ </header>
++<div class="crumbs"><a href="#" class="back-link" onclick="history.back();return false;">&larr; Back</a></div>
++
+ 
+ 
+ <main>
+diff --git a/src/templates/study_matches.html b/src/templates/study_matches.html
+index 4c2ba92..8538340 100644
+--- a/src/templates/study_matches.html
++++ b/src/templates/study_matches.html
+@@ -7,6 +7,7 @@
+     <link rel="preconnect" href="https://fonts.googleapis.com">
+     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
++    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+ </head>
+ 
+ <body>
+@@ -14,7 +15,12 @@
+ <header class="topbar">
+     <span class="brand">StudyMore</span>
+ 
+-    <nav>
++    
++    <button type="button" class="menu-toggle" aria-label="Toggle menu" aria-controls="site-nav" aria-expanded="false" onclick="var n=document.getElementById('site-nav');n.classList.toggle('open');this.classList.toggle('open');this.setAttribute('aria-expanded', n.classList.contains('open'));">
++        <span></span><span></span><span></span>
++    </button>
++
++    <nav id="site-nav">
+         <a href="{{ url_for('dashboard.dashboard') }}">Dashboard</a>
+         <a href="{{ url_for('search.search') }}">Search Groups</a>
+         <a href="{{ url_for('create_group') }}">Create Group</a>
+@@ -25,6 +31,8 @@
+         <a href="{{ url_for('logout') }}">Log Out</a>
+     </nav>
+ </header>
++<div class="crumbs"><a href="#" class="back-link" onclick="history.back();return false;">&larr; Back</a></div>
++
+ 
+ <main class="matches-main">
+ 
+@@ -49,9 +57,20 @@
+             </p>
+         </div>
+ 
+-        <a href="{{ url_for('study_request') }}" class="secondary">
+-            New Study Request
+-        </a>
++        <div class="request-summary-actions">
++            <a href="{{ url_for('study_request') }}" class="secondary">
++                New Study Request
++            </a>
++            <form
++                method="POST"
++                action="{{ url_for('close_study_request', request_id=study_request.id) }}"
++                onsubmit="return confirm('Close this study request? You will stop showing up as a match for other students.');"
++            >
++                <button type="submit" class="secondary danger-text">
++                    Close This Request
++                </button>
++            </form>
++        </div>
+     </section>
+ 
+ 
+diff --git a/src/templates/study_request.html b/src/templates/study_request.html
+index 07f476b..c42e579 100644
+--- a/src/templates/study_request.html
++++ b/src/templates/study_request.html
+@@ -7,6 +7,7 @@
+     <link rel="preconnect" href="https://fonts.googleapis.com">
+     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
++    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+ </head>
+ 
+ <body>
+@@ -14,7 +15,12 @@
+ <header class="topbar">
+     <span class="brand">StudyMore</span>
+ 
+-    <nav>
++    
++    <button type="button" class="menu-toggle" aria-label="Toggle menu" aria-controls="site-nav" aria-expanded="false" onclick="var n=document.getElementById('site-nav');n.classList.toggle('open');this.classList.toggle('open');this.setAttribute('aria-expanded', n.classList.contains('open'));">
++        <span></span><span></span><span></span>
++    </button>
++
++    <nav id="site-nav">
+         <a href="{{ url_for('dashboard.dashboard') }}">Dashboard</a>
+         <a href="{{ url_for('search.search') }}">Search Groups</a>
+         <a href="{{ url_for('create_group') }}">Create Group</a>
+@@ -25,6 +31,8 @@
+         <a href="{{ url_for('logout') }}">Log Out</a>
+     </nav>
+ </header>
++<div class="crumbs"><a href="#" class="back-link" onclick="history.back();return false;">&larr; Back</a></div>
++
+ 
+ <main class="create-main">
+ 
