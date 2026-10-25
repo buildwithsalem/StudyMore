@@ -12,6 +12,7 @@ from matching import (
 from validators import safe_meeting_url, validate_meeting_link
 from search_query import derive_display_status
 from search_query import meeting_has_passed
+from datetime import datetime, timedelta
 
 import sqlite3
 
@@ -131,6 +132,25 @@ def _create_tables(conn):
             end_time TEXT NOT NULL,
             UNIQUE(user_id, day_of_week, start_time, end_time),
             FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+    """)
+    # Study Sessions - Iteration 3 Study Schedule & Reminders
+    # Stores one-time and recurring study sessions created for a study group.
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS study_sessions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            group_id INTEGER NOT NULL,
+            created_by_user_id INTEGER NOT NULL,
+            title TEXT NOT NULL,
+            session_date TEXT NOT NULL,
+            start_time TEXT NOT NULL,
+            end_time TEXT NOT NULL,
+            recurrence TEXT NOT NULL DEFAULT 'none',
+            recurrence_end_date TEXT,
+            status TEXT NOT NULL DEFAULT 'scheduled',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (group_id) REFERENCES study_groups(id),
+            FOREIGN KEY (created_by_user_id) REFERENCES users(id)
         )
     """)
 
@@ -745,6 +765,282 @@ def availability():
         time_slots=time_slots,
         selected_slots=selected_slots,
         message=message
+    )
+
+@app.route("/schedule", methods=["GET", "POST"])
+def schedule():
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
+    user_id = session["user_id"]
+
+    conn = get_db_connection()
+    conn.row_factory = sqlite3.Row
+
+    # Only groups the logged-in student belongs to can be scheduled.
+    groups = conn.execute(
+        """
+        SELECT sg.id, sg.group_name, sg.course_code
+        FROM study_groups sg
+        JOIN group_memberships gm ON gm.group_id = sg.id
+        WHERE gm.user_id = ?
+        ORDER BY sg.course_code, sg.group_name
+        """,
+        (user_id,)
+    ).fetchall()
+    message = None
+    error = None
+
+    if request.method == "POST":
+        group_id = request.form.get("group_id", "").strip()
+        title = request.form.get("title", "").strip()
+        session_date = request.form.get("session_date", "").strip()
+        start_time = request.form.get("start_time", "").strip()
+        end_time = request.form.get("end_time", "").strip()
+        recurrence = request.form.get("recurrence", "none").strip()
+        recurrence_end_date = request.form.get(
+            "recurrence_end_date", ""
+        ).strip()
+
+        # Make sure all required fields were provided.
+        if not group_id or not title or not session_date or not start_time or not end_time:
+            error = "Please complete all required session fields."
+
+        elif recurrence not in ("none", "daily", "weekly"):
+            error = "Invalid recurrence option."
+
+        elif recurrence in ("daily", "weekly") and not recurrence_end_date:
+            error = "Please select an end date for the recurring session."
+
+        elif (
+            recurrence in ("daily", "weekly")
+            and recurrence_end_date < session_date
+        ):
+            error = "The repeat-until date cannot be before the session date."
+
+        elif end_time <= start_time:
+            error = "The session end time must be after the start time."
+
+        else:
+            # A student may only schedule a session for a group they belong to.
+            membership = conn.execute(
+                """
+                SELECT 1
+                FROM group_memberships
+                WHERE user_id = ? AND group_id = ?
+                """,
+                (user_id, group_id)
+            ).fetchone()
+
+            if membership is None:
+                error = "You must be a member of this group to schedule a session."
+
+            else:
+                # Build every date on which the new session would occur.
+                proposed_dates = []
+
+                current_date = datetime.strptime(
+                    session_date, "%Y-%m-%d"
+                )
+
+                if recurrence == "none":
+                    proposed_dates.append(session_date)
+
+                else:
+                    repeat_until = datetime.strptime(
+                        recurrence_end_date, "%Y-%m-%d"
+                    )
+
+                    if recurrence == "daily":
+                        step = timedelta(days=1)
+                    else:
+                        step = timedelta(weeks=1)
+
+                    while current_date <= repeat_until:
+                        proposed_dates.append(
+                            current_date.strftime("%Y-%m-%d")
+                        )
+                        current_date += step
+                                # Get all scheduled sessions from groups this student belongs to.
+                existing_sessions = conn.execute(
+                    """
+                    SELECT
+                        ss.session_date,
+                        ss.start_time,
+                        ss.end_time,
+                        ss.recurrence,
+                        ss.recurrence_end_date
+                    FROM study_sessions ss
+                    JOIN group_memberships gm
+                        ON gm.group_id = ss.group_id
+                    WHERE gm.user_id = ?
+                      AND ss.status = 'scheduled'
+                    """,
+                    (user_id,)
+                ).fetchall()
+                
+                conflict_found = False
+
+                for existing_session in existing_sessions:
+                    existing_data = dict(existing_session)
+
+                    existing_start_date = datetime.strptime(
+                        existing_data["session_date"], "%Y-%m-%d"
+                    )
+
+                    existing_recurrence = existing_data["recurrence"]
+                    existing_end_date = existing_data["recurrence_end_date"]
+
+                    # Build the occurrence dates for this existing session.
+                    existing_dates = []
+
+                    if existing_recurrence == "none" or not existing_end_date:
+                        existing_dates.append(
+                            existing_data["session_date"]
+                        )
+                    else:
+                        repeat_until = datetime.strptime(
+                            existing_end_date, "%Y-%m-%d"
+                        )
+
+                        if existing_recurrence == "daily":
+                            existing_step = timedelta(days=1)
+                        elif existing_recurrence == "weekly":
+                            existing_step = timedelta(weeks=1)
+                        else:
+                            existing_step = None
+
+                        if existing_step is not None:
+                            current_existing_date = existing_start_date
+
+                            while current_existing_date <= repeat_until:
+                                existing_dates.append(
+                                    current_existing_date.strftime("%Y-%m-%d")
+                                )
+                                current_existing_date += existing_step
+
+                    # A conflict exists when the dates match and the times overlap.
+                    for proposed_date in proposed_dates:
+                        if (
+                            proposed_date in existing_dates
+                            and start_time < existing_data["end_time"]
+                            and end_time > existing_data["start_time"]
+                        ):
+                            conflict_found = True
+                            break
+
+                    if conflict_found:
+                        break
+
+                if conflict_found:
+                    error = (
+                        "You already have a study session that overlaps "
+                        "with this time."
+                    )
+                else:
+                    conn.execute(
+                        """
+                        INSERT INTO study_sessions (
+                            group_id,
+                            created_by_user_id,
+                            title,
+                            session_date,
+                            start_time,
+                            end_time,
+                            recurrence,
+                            recurrence_end_date
+                        )
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                        """,
+                        (
+                            group_id,
+                            user_id,
+                            title,
+                            session_date,
+                            start_time,
+                            end_time,
+                            recurrence,
+                            recurrence_end_date or None,
+                        )
+                    )
+
+                    conn.commit()
+                    message = "Study session scheduled successfully."
+
+    # Sessions from groups the student belongs to.
+    sessions = conn.execute(
+        """
+        SELECT
+            ss.id,
+            ss.group_id,
+            ss.title,
+            ss.session_date,
+            ss.start_time,
+            ss.end_time,
+            ss.recurrence,
+            ss.recurrence_end_date,
+            ss.status,
+            sg.group_name,
+            sg.course_code
+        FROM study_sessions ss
+        JOIN study_groups sg ON sg.id = ss.group_id
+        JOIN group_memberships gm ON gm.group_id = ss.group_id
+        WHERE gm.user_id = ?
+          AND ss.status = 'scheduled'
+        ORDER BY ss.session_date, ss.start_time
+        """,
+        (user_id,)
+    ).fetchall()
+
+        # Expand recurring sessions into individual occurrences for display.
+    session_occurrences = []
+
+    for study_session in sessions:
+        session_data = dict(study_session)
+
+        start_date = datetime.strptime(
+            session_data["session_date"], "%Y-%m-%d"
+        )
+
+        recurrence = session_data["recurrence"]
+        recurrence_end = session_data["recurrence_end_date"]
+
+        # One-time session.
+        if recurrence == "none" or not recurrence_end:
+            session_occurrences.append(session_data)
+            continue
+
+        end_date = datetime.strptime(recurrence_end, "%Y-%m-%d")
+
+        if recurrence == "daily":
+            step = timedelta(days=1)
+        elif recurrence == "weekly":
+            step = timedelta(weeks=1)
+        else:
+            session_occurrences.append(session_data)
+            continue
+
+        current_date = start_date
+
+        while current_date <= end_date:
+            occurrence = session_data.copy()
+            occurrence["session_date"] = current_date.strftime("%Y-%m-%d")
+            session_occurrences.append(occurrence)
+
+            current_date += step
+
+    session_occurrences.sort(
+        key=lambda item: (item["session_date"], item["start_time"])
+    )
+
+    conn.close()
+
+    return render_template(
+        "schedule.html",
+        groups=groups,
+        sessions=session_occurrences,
+        message=message,
+        error=error
     )
 
 

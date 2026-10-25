@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Study Schedule | StudyMore</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+    <main class="container">
+        <h1>Study Schedule</h1>
+        <p>Plan and keep track of your upcoming study sessions.</p>
+
+        <section>
+    <h2>Schedule New Session</h2>
+
+    {% if message %}
+        <p>{{ message }}</p>
+    {% endif %}
+
+    {% if error %}
+        <p>{{ error }}</p>
+    {% endif %}
+
+    {% if groups %}
+        <form method="POST" action="{{ url_for('schedule') }}">
+
+            <div>
+                <label for="group_id">Study Group *</label>
+                <select id="group_id" name="group_id" required>
+                    <option value="">Select a study group</option>
+
+                    {% for group in groups %}
+                        <option value="{{ group['id'] }}">
+                            {{ group["course_code"] }} — {{ group["group_name"] }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label for="title">Session Title *</label>
+                <input
+                    type="text"
+                    id="title"
+                    name="title"
+                    placeholder="Example: Exam 2 Review"
+                    required
+                >
+            </div>
+
+            <div>
+                <label for="session_date">Date *</label>
+                <input
+                    type="date"
+                    id="session_date"
+                    name="session_date"
+                    required
+                >
+            </div>
+
+            <div>
+                <label for="start_time">Start Time *</label>
+                <input
+                    type="time"
+                    id="start_time"
+                    name="start_time"
+                    required
+                >
+            </div>
+
+            <div>
+                <label for="end_time">End Time *</label>
+                <input
+                    type="time"
+                    id="end_time"
+                    name="end_time"
+                    required
+                >
+            </div>
+
+            <div>
+                <label for="recurrence">Repeat</label>
+                <select id="recurrence" name="recurrence">
+                    <option value="none">Does not repeat</option>
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                </select>
+            </div>
+
+            <div>
+                <label for="recurrence_end_date">
+                    Repeat Until
+                </label>
+                <input
+                    type="date"
+                    id="recurrence_end_date"
+                    name="recurrence_end_date"
+                >
+            </div>
+
+            <button type="submit">
+                Schedule Session
+            </button>
+
+        </form>
+    {% else %}
+        <p>
+            Join a study group before scheduling a study session.
+        </p>
+    {% endif %}
+</section>
+        <section>
+            <h2>Upcoming Sessions</h2>
+
+            {% if sessions %}
+                {% for study_session in sessions %}
+                    <div>
+                        <h3>{{ study_session["title"] }}</h3>
+
+                        <p>
+                            {{ study_session["course_code"] }}
+                            — {{ study_session["group_name"] }}
+                        </p>
+
+                        <p>
+                            {{ study_session["session_date"] }}
+                            |
+                            {{ study_session["start_time"] }}
+                            – {{ study_session["end_time"] }}
+                        </p>
+
+                        {% if study_session["recurrence"] != "none" %}
+                            <p>
+                                Repeats: {{ study_session["recurrence"] }}
+                            </p>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            {% else %}
+                <p>No study sessions scheduled yet.</p>
+            {% endif %}
+        </section>
+    </main>
+</body>
+</html>
