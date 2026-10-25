@@ -119,11 +119,11 @@ class DatabaseConfigurationTests(IntegrationTestCase):
         self.client.get("/search")
         self.client.post("/availability", data={"availability": ["Monday|09:00|10:00"]})
         self.client.post("/register", data={
-            "name": "N", "email": "n@example.com",
+            "name": "N", "email": "n@mavs.uta.edu",
             "password": "pw", "confirm_password": "pw"})
         self.assertEqual(self.stray_files(), [])
         self.assertTrue(self.conn.execute(
-            "SELECT 1 FROM users WHERE email = 'n@example.com'").fetchone())
+            "SELECT 1 FROM users WHERE email = 'n@mavs.uta.edu'").fetchone())
 
     def test_changing_the_config_switches_every_route_to_the_other_database(self):
         other = os.path.join(self.db_dir, "other.db")
