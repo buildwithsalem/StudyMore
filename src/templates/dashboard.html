@@ -26,6 +26,7 @@
     <a href="{{ url_for('my_groups') }}">My Groups</a>
     <a href="{{ url_for('study_request') }}">Find My Match</a>
     <a href="{{ url_for('availability') }}">Availability</a>
+    <a href="{{ url_for('schedule') }}">Schedule</a>
     <a href="{{ url_for('profile.profile') }}">Profile</a>
     <a href="{{ url_for('logout') }}">Log Out</a>
   </nav>
@@ -63,8 +64,8 @@
       <div class="stat-label">Joined Groups</div>
     </div>
     <div class="stat-card">
-      <div class="stat-number">{{ stats.upcoming_meetings_count }}</div>
-      <div class="stat-label">Upcoming Meetings</div>
+      <div class="stat-number">{{ stats.upcoming_schedule_count }}</div>
+      <div class="stat-label">Upcoming Schedule</div>
     </div>
     <div class="stat-card">
       <div class="stat-number">{{ stats.smart_matches_count }}</div>
@@ -79,42 +80,83 @@
   <!-- Section 1: Upcoming Meetings -->
   <section class="dashboard-section">
     <div class="section-title-row">
-      <h2 class="section-title">Upcoming Meetings</h2>
+      <h2 class="section-title">Upcoming Schedule</h2>
     </div>
 
-    {% if upcoming_meetings %}
+    {% if upcoming_meetings or upcoming_study_sessions %}
       <div class="meeting-list">
-        {% for meeting in upcoming_meetings %}
-          <div class="meeting-item">
-            <div class="meeting-date-badge">
-              <div class="meeting-date-day">{{ meeting.meeting_date }}</div>
-              <div class="meeting-date-time">{{ meeting.meeting_time }}</div>
-            </div>
+        {% for item in upcoming_schedule %}
+  <div class="meeting-item">
 
-            <div class="meeting-info">
-              <h3>{{ meeting.group_name }}</h3>
-              <p class="course">
-                {{ meeting.course_code }}{% if meeting.section %} &middot; Section {{ meeting.section }}{% endif %}
-              </p>
-              <p>
-                <strong>Location:</strong> {{ meeting.location_display }} &middot;
-                <strong>Type:</strong> {{ meeting.meeting_type }}
-              </p>
-            </div>
+    {% if item.schedule_type == "meeting" %}
+      <div class="meeting-date-badge">
+        <div class="meeting-date-day">{{ item.meeting_date }}</div>
+        <div class="meeting-date-time">{{ item.meeting_time }}</div>
+      </div>
 
-            <div class="card-actions">
-              {% set safe_link = meeting.meeting_link|safe_meeting_url %}
-              {% if safe_link %}
-                <a class="secondary" href="{{ safe_link }}" target="_blank" rel="noopener noreferrer">Join Link</a>
-              {% endif %}
-              <a class="primary" href="{{ url_for('group_details', group_id=meeting.id) }}">View Group</a>
-            </div>
-          </div>
-        {% endfor %}
+      <div class="meeting-info">
+        <h3>{{ item.group_name }}</h3>
+
+        <p class="course">
+          {{ item.course_code }}{% if item.section %} &middot; Section {{ item.section }}{% endif %}
+        </p>
+
+        <p>
+          <strong>Group Meeting</strong> &middot;
+          <strong>Location:</strong> {{ item.location_display }} &middot;
+          <strong>Type:</strong> {{ item.meeting_type }}
+        </p>
+      </div>
+
+      <div class="card-actions">
+        {% set safe_link = item.meeting_link|safe_meeting_url %}
+        {% if safe_link %}
+          <a class="secondary"
+             href="{{ safe_link }}"
+             target="_blank"
+             rel="noopener noreferrer">
+            Join Link
+          </a>
+        {% endif %}
+
+        <a class="primary"
+           href="{{ url_for('group_details', group_id=item.id) }}">
+          View Group
+        </a>
+      </div>
+
+    {% else %}
+      <div class="meeting-date-badge">
+        <div class="meeting-date-day">{{ item.session_date }}</div>
+        <div class="meeting-date-time">{{ item.start_time }}</div>
+      </div>
+
+      <div class="meeting-info">
+        <h3>{{ item.title }}</h3>
+
+        <p class="course">
+          {{ item.course_code }} &middot; {{ item.group_name }}
+        </p>
+
+        <p>
+          <strong>Study Session</strong> &middot;
+          {{ item.start_time }}–{{ item.end_time }}
+        </p>
+      </div>
+
+      <div class="card-actions">
+        <a class="primary" href="{{ url_for('schedule') }}">
+          View Schedule
+        </a>
+      </div>
+    {% endif %}
+
+  </div>
+{% endfor %}
       </div>
     {% else %}
       <div class="empty-state">
-        <p>No upcoming meetings scheduled.</p>
+        <p>No upcoming meetings or study sessions scheduled.</p>
         <a class="secondary" href="{{ url_for('search.search') }}">Browse Study Groups</a>
       </div>
     {% endif %}

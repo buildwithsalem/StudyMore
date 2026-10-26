@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Study Series | StudyMore</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+
+<header class="topbar">
+    <div class="site-nav-wrap">
+        <a class="brand" href="/dashboard">StudyMore</a>
+
+        <nav id="site-nav">
+            <a href="/dashboard">Dashboard</a>
+            <a href="/search">Search Groups</a>
+            <a href="/create-group">Create Group</a>
+            <a href="/my-groups">My Groups</a>
+            <a href="/study-request">Find My Match</a>
+            <a href="/availability">Availability</a>
+            <a href="/schedule" class="active">Schedule</a>
+            <a href="/profile">Profile</a>
+            <a href="/logout">Log Out</a>
+        </nav>
+    </div>
+</header>
+
+<main class="schedule-page">
+
+    <div class="schedule-page-header">
+        <h1>Edit Study Series</h1>
+        <p>
+            Update this recurring study session and its series settings.
+        </p>
+    </div>
+
+    <section class="schedule-form-card">
+
+        <h2>{{ study_session["title"] }}</h2>
+
+        <p class="schedule-group-name">
+            {{ study_session["course_code"] }}
+            — {{ study_session["group_name"] }}
+        </p>
+
+        <div class="schedule-info-note">
+            Changes made here will apply to the entire recurring series.
+        </div>
+
+        <form
+            method="POST"
+            action="{{ url_for(
+                'update_study_session',
+                session_id=study_session['id']
+            ) }}"
+        >
+
+            <div class="schedule-field">
+                <label for="title">Session Title *</label>
+                <input
+                    type="text"
+                    id="title"
+                    name="title"
+                    value="{{ study_session['title'] }}"
+                    required
+                >
+            </div>
+
+            <div class="schedule-form-grid">
+
+                <div class="schedule-field">
+                    <label for="session_date">Start Date *</label>
+                    <input
+                        type="date"
+                        id="session_date"
+                        name="session_date"
+                        value="{{ study_session['session_date'] }}"
+                        required
+                    >
+                </div>
+
+                <div class="schedule-field">
+                    <label for="start_time">Start Time *</label>
+                    <input
+                        type="time"
+                        id="start_time"
+                        name="start_time"
+                        value="{{ study_session['start_time'] }}"
+                        required
+                    >
+                </div>
+
+                <div class="schedule-field">
+                    <label for="end_time">End Time *</label>
+                    <input
+                        type="time"
+                        id="end_time"
+                        name="end_time"
+                        value="{{ study_session['end_time'] }}"
+                        required
+                    >
+                </div>
+
+            </div>
+
+            <div class="schedule-field">
+                <label for="recurrence">Repeat</label>
+
+                <select id="recurrence" name="recurrence">
+
+                    <option
+                        value="none"
+                        {% if study_session["recurrence"] == "none" %}
+                            selected
+                        {% endif %}
+                    >
+                        Does not repeat
+                    </option>
+
+                    <option
+                        value="daily"
+                        {% if study_session["recurrence"] == "daily" %}
+                            selected
+                        {% endif %}
+                    >
+                        Daily
+                    </option>
+
+                    <option
+                        value="weekly"
+                        {% if study_session["recurrence"] == "weekly" %}
+                            selected
+                        {% endif %}
+                    >
+                        Weekly
+                    </option>
+
+                </select>
+            </div>
+
+            <div class="schedule-field schedule-repeat-until">
+                <label for="recurrence_end_date">
+                    Repeat Until
+                </label>
+
+                <input
+                    type="date"
+                    id="recurrence_end_date"
+                    name="recurrence_end_date"
+                    value="{{ study_session['recurrence_end_date'] or '' }}"
+                >
+            </div>
+
+            <div class="schedule-edit-actions">
+
+                <button
+                    type="submit"
+                    class="schedule-primary-button"
+                >
+                    Save Series Changes
+                </button>
+
+                <a
+                    href="{{ url_for('schedule') }}"
+                    class="schedule-secondary-button"
+                >
+                    Cancel
+                </a>
+
+            </div>
+
+        </form>
+
+    </section>
+
+</main>
+
+</body>
+</html>

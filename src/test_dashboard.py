@@ -328,7 +328,10 @@ class DashboardEmptyStatesTests(DashboardTestCase):
         self.log_in(user_id=99, user_name="New Student")
         body = self.client.get("/dashboard").data.decode()
 
-        self.assertIn("No upcoming meetings scheduled.", body)
+        self.assertIn(
+    "No upcoming meetings or study sessions scheduled.",
+    body
+)
 
     def test_empty_state_for_study_requests(self):
         """Dashboard renders proper empty state when user has no study requests."""
