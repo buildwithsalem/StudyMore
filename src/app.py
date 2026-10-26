@@ -1548,27 +1548,45 @@ def update_study_session(session_id):
         )
 
     if proposed_dates:
-        placeholders = ",".join("?" for _ in proposed_dates)
-
-        conn.execute(
-            f"""
-            DELETE FROM cancelled_session_occurrences
+        cancelled_rows = conn.execute(
+            """
+            SELECT occurrence_date
+            FROM cancelled_session_occurrences
             WHERE session_id = ?
-              AND occurrence_date NOT IN ({placeholders})
             """,
-            (session_id, *proposed_dates)
-        )
+            (session_id,)
+        ).fetchall()
+
+        for row in cancelled_rows:
+            if row["occurrence_date"] not in proposed_dates:
+                conn.execute(
+                    """
+                    DELETE FROM cancelled_session_occurrences
+                    WHERE session_id = ?
+                    AND occurrence_date = ?
+                  """,
+                  (session_id, row["occurrence_date"])
+                )
     if proposed_dates:
-        placeholders = ",".join("?" for _ in proposed_dates)
-
-        conn.execute(
-            f"""
-            DELETE FROM edited_session_occurrences
+        edited_rows = conn.execute(
+            """
+            SELECT original_occurrence_date
+            FROM edited_session_occurrences
             WHERE session_id = ?
-              AND original_occurrence_date NOT IN ({placeholders})
             """,
-            (session_id, *proposed_dates)
-        )
+            (session_id,)
+        ).fetchall()
+
+        for row in edited_rows:
+            if row["original_occurrence_date"] not in proposed_dates:
+                conn.execute(
+                    """
+                    DELETE FROM edited_session_occurrences
+                    WHERE session_id = ?
+                    AND original_occurrence_date = ?
+                    """,
+                    (session_id, row["original_occurrence_date"])
+                )
 
     conn.execute(
         """
