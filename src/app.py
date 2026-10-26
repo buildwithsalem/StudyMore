@@ -841,6 +841,14 @@ def schedule():
             and recurrence_end_date < session_date
         ):
             error = "The repeat-until date cannot be before the session date."
+        elif (
+    recurrence in ("daily", "weekly")
+    and (
+        datetime.strptime(recurrence_end_date, "%Y-%m-%d")
+        - datetime.strptime(session_date, "%Y-%m-%d")
+    ).days > 365
+):
+            error = "Recurring study sessions cannot extend more than one year."
 
         elif end_time <= start_time:
             error = "The session end time must be after the start time."
@@ -886,30 +894,58 @@ def schedule():
                     else:
                         step = timedelta(weeks=1)
 
-                    while current_date <= repeat_until:
+                    while (
+                        current_date <= repeat_until
+                        and current_date <= datetime.strptime(
+                        session_date, "%Y-%m-%d"
+                        ) + timedelta(days=365)
+                    ):
                         proposed_dates.append(
                             current_date.strftime("%Y-%m-%d")
                         )
                         current_date += step
-                                # Get all scheduled sessions from groups this student belongs to.
-                existing_sessions = conn.execute(
+                        conn.execute("BEGIN IMMEDIATE")
+                        # Get all scheduled sessions from groups this student belongs to.
+                        existing_sessions = conn.execute(
+                        """
+                        SELECT
+                            ss.session_date,
+                            ss.start_time,
+                            ss.end_time,
+                            ss.recurrence,
+                            ss.recurrence_end_date
+                            FROM study_sessions ss
+                            JOIN group_memberships gm
+                            ON gm.group_id = ss.group_id
+                            WHERE gm.user_id = ?
+                            AND ss.status = 'scheduled'
+                        """,
+                        (user_id,)
+                ).fetchall()
+                group_meetings = conn.execute(
                     """
                     SELECT
-                        ss.session_date,
-                        ss.start_time,
-                        ss.end_time,
-                        ss.recurrence,
-                        ss.recurrence_end_date
-                    FROM study_sessions ss
+                        sg.meeting_date,
+                        sg.meeting_time
+                    FROM study_groups sg
                     JOIN group_memberships gm
-                        ON gm.group_id = ss.group_id
+                        ON gm.group_id = sg.id
                     WHERE gm.user_id = ?
-                      AND ss.status = 'scheduled'
                     """,
                     (user_id,)
                 ).fetchall()
                 
                 conflict_found = False
+
+                for group_meeting in group_meetings:
+                    meeting_data = dict(group_meeting)
+
+                    if (
+                        meeting_data["meeting_date"] in proposed_dates
+                        and start_time <= meeting_data["meeting_time"] < end_time
+                    ):
+                        conflict_found = True
+                        break
 
                 for existing_session in existing_sessions:
                     existing_data = dict(existing_session)
@@ -943,7 +979,10 @@ def schedule():
                         if existing_step is not None:
                             current_existing_date = existing_start_date
 
-                            while current_existing_date <= repeat_until:
+                            while (
+                                current_existing_date <= repeat_until
+                                and current_existing_date <= existing_start_date + timedelta(days=365)
+                            ):
                                 existing_dates.append(
                                     current_existing_date.strftime("%Y-%m-%d")
                                 )
@@ -963,6 +1002,7 @@ def schedule():
                         break
 
                 if conflict_found:
+                    conn.rollback()
                     error = (
                         "You already have a study session that overlaps "
                         "with this time."
@@ -1064,7 +1104,14 @@ def schedule():
 
         # One-time session
         if recurrence == "none" or not recurrence_end:
-            session_occurrences.append(session_data)
+            session_start = datetime.strptime(
+                f"{session_data['session_date']} {session_data['start_time']}",
+                "%Y-%m-%d %H:%M"
+            )
+
+            if session_start > datetime.now():
+                session_occurrences.append(session_data)
+
             continue
 
         end_date = datetime.strptime(
@@ -1081,7 +1128,10 @@ def schedule():
 
         current_date = start_date
 
-        while current_date <= end_date:
+        while (
+            current_date <= end_date
+            and current_date <= start_date + timedelta(days=365)
+        ):
             occurrence_date = current_date.strftime("%Y-%m-%d")
 
             if (
@@ -1108,7 +1158,13 @@ def schedule():
                     occurrence["session_date"] = occurrence_date
                     occurrence["original_occurrence_date"] = occurrence_date
 
-                session_occurrences.append(occurrence)
+                occurrence_start = datetime.strptime(
+                    f"{occurrence['session_date']} {occurrence['start_time']}",
+                    "%Y-%m-%d %H:%M"
+                )
+
+                if occurrence_start > datetime.now():
+                    session_occurrences.append(occurrence)
 
             current_date += step
 
@@ -1119,17 +1175,26 @@ def schedule():
         )
     )
     grouped_sessions = {}
+    # Keep recurring series visible even when all occurrences are cancelled.
+    for study_session in sessions:
+        session_data = dict(study_session)
+
+        if session_data["recurrence"] in ("daily", "weekly"):
+            grouped_sessions[session_data["id"]] = {
+                "session": session_data.copy(),
+                "occurrences": []
+            }
 
     for occurrence in session_occurrences:
         session_id = occurrence["id"]
 
-        if session_id not in grouped_sessions:
-            grouped_sessions[session_id] = {
-                "session": occurrence.copy(),
-                "occurrences": []
-            }
+    if session_id not in grouped_sessions:
+        grouped_sessions[session_id] = {
+            "session": occurrence.copy(),
+            "occurrences": []
+        }
 
-        grouped_sessions[session_id]["occurrences"].append(occurrence)
+    grouped_sessions[session_id]["occurrences"].append(occurrence)
 
     session_groups = list(grouped_sessions.values())
     
@@ -1325,8 +1390,18 @@ def update_study_session(session_id):
         conn.close()
         return "The repeat-until date cannot be before the session date.", 400
 
-        if end_time <= start_time:
-            conn.close()
+    if (
+        recurrence in ("daily", "weekly")
+        and (
+            datetime.strptime(recurrence_end_date, "%Y-%m-%d")
+            - datetime.strptime(session_date, "%Y-%m-%d")
+        ).days > 365
+    ):
+        conn.close()
+        return "Recurring study sessions cannot extend more than one year.", 400
+
+    if end_time <= start_time:
+        conn.close()
         return "The session end time must be after the start time.", 400
 
     session_start = datetime.strptime(
@@ -1340,7 +1415,6 @@ def update_study_session(session_id):
             "The study session must be scheduled for a future date and time.",
             400
         )
-
 
     # Build all proposed dates for the edited session.
     proposed_dates = []
@@ -1358,13 +1432,19 @@ def update_study_session(session_id):
         else:
             step = timedelta(weeks=1)
 
-        while current_date <= repeat_until:
+        while (
+            current_date <= repeat_until
+            and current_date <= datetime.strptime(
+            session_date, "%Y-%m-%d"
+            ) + timedelta(days=365)
+        ):
             proposed_dates.append(
                 current_date.strftime("%Y-%m-%d")
             )
             current_date += step
 
     # Check the user's OTHER sessions for conflicts.
+    conn.execute("BEGIN IMMEDIATE")
     existing_sessions = conn.execute(
         """
         SELECT
@@ -1383,8 +1463,30 @@ def update_study_session(session_id):
         """,
         (user_id, session_id)
     ).fetchall()
+    group_meetings = conn.execute(
+        """
+        SELECT
+            sg.meeting_date,
+            sg.meeting_time
+        FROM study_groups sg
+        JOIN group_memberships gm
+            ON gm.group_id = sg.id
+        WHERE gm.user_id = ?
+        """,
+        (user_id,)
+    ).fetchall()
 
     conflict_found = False
+
+    for group_meeting in group_meetings:
+        meeting_data = dict(group_meeting)
+
+        if (
+            meeting_data["meeting_date"] in proposed_dates
+            and start_time <= meeting_data["meeting_time"] < end_time
+        ):
+            conflict_found = True
+            break
 
     for existing_session in existing_sessions:
         existing_data = dict(existing_session)
@@ -1416,7 +1518,10 @@ def update_study_session(session_id):
             if existing_step is not None:
                 current_existing_date = existing_start_date
 
-                while current_existing_date <= repeat_until:
+                while (
+                    current_existing_date <= repeat_until
+                    and current_existing_date <= existing_start_date + timedelta(days=365)
+                ):
                     existing_dates.append(
                         current_existing_date.strftime("%Y-%m-%d")
                     )
@@ -1435,10 +1540,34 @@ def update_study_session(session_id):
             break
 
     if conflict_found:
+        conn.rollback()
         conn.close()
         return (
             "You already have a study session that overlaps with this time.",
             400
+        )
+
+    if proposed_dates:
+        placeholders = ",".join("?" for _ in proposed_dates)
+
+        conn.execute(
+            f"""
+            DELETE FROM cancelled_session_occurrences
+            WHERE session_id = ?
+              AND occurrence_date NOT IN ({placeholders})
+            """,
+            (session_id, *proposed_dates)
+        )
+    if proposed_dates:
+        placeholders = ",".join("?" for _ in proposed_dates)
+
+        conn.execute(
+            f"""
+            DELETE FROM edited_session_occurrences
+            WHERE session_id = ?
+              AND original_occurrence_date NOT IN ({placeholders})
+            """,
+            (session_id, *proposed_dates)
         )
 
     conn.execute(
@@ -1559,9 +1688,9 @@ def update_session_occurrence(session_id, occurrence_date):
         conn.close()
         return redirect(url_for("schedule"))
 
-        if not title or not session_date or not start_time or not end_time:
+    if not title or not session_date or not start_time or not end_time:
             conn.close()
-        return "Please complete all required session fields.", 400
+            return "Please complete all required session fields.", 400
 
     if end_time <= start_time:
         conn.close()
@@ -1578,6 +1707,8 @@ def update_session_occurrence(session_id, occurrence_date):
             "The study session must be scheduled for a future date and time.",
             400
         )
+    conn.execute("BEGIN IMMEDIATE")
+
     # Check the user's other scheduled sessions for a conflict.
     existing_sessions = conn.execute(
         """
@@ -1595,6 +1726,18 @@ def update_session_occurrence(session_id, occurrence_date):
   AND ss.status = 'scheduled'
 """,
 (user_id,)
+    ).fetchall()
+    group_meetings = conn.execute(
+        """
+        SELECT
+            sg.meeting_date,
+            sg.meeting_time
+        FROM study_groups sg
+        JOIN group_memberships gm
+            ON gm.group_id = sg.id
+        WHERE gm.user_id = ?
+        """,
+        (user_id,)
     ).fetchall()
     cancelled_rows = conn.execute(
         """
@@ -1625,6 +1768,15 @@ def update_session_occurrence(session_id, occurrence_date):
     }
 
     conflict_found = False
+    for group_meeting in group_meetings:
+        meeting_data = dict(group_meeting)
+
+        if (
+            meeting_data["meeting_date"] == session_date
+            and start_time <= meeting_data["meeting_time"] < end_time
+        ):
+            conflict_found = True
+            break
 
     for existing_session in existing_sessions:
         existing_data = dict(existing_session)
@@ -1656,7 +1808,10 @@ def update_session_occurrence(session_id, occurrence_date):
             if existing_step is not None:
                 current_existing_date = existing_start_date
 
-                while current_existing_date <= repeat_until:
+                while (
+                    current_existing_date <= repeat_until
+                    and current_existing_date <= existing_start_date + timedelta(days=365)
+                ):
                     existing_dates.append(
                         current_existing_date.strftime("%Y-%m-%d")
                     )
@@ -1711,6 +1866,7 @@ def update_session_occurrence(session_id, occurrence_date):
             break
 
     if conflict_found:
+        conn.rollback()
         conn.close()
         return (
             "You already have a study session that overlaps with this time.",

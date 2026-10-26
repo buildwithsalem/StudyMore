@@ -196,11 +196,22 @@
                     {% if study_session["recurrence"] != "none" %}
 
                         <div class="session-occurrences">
+                            {% if not group["occurrences"] %}
+                                <div class="session-occurrence-row">
+                                    <div class="session-occurrence-info">
+                                        <span>No upcoming occurrences in this series.</span>
+                                    </div>
+                                </div>
+                            {% endif %}
 
                             {% for occurrence in group["occurrences"] %}
                                 <div class="session-occurrence-row">
 
                                     <div class="session-occurrence-info">
+                                        <span>
+                                            {{ occurrence["title"] }}
+                                        </span>
+                                        
                                         <strong>
                                             {{ occurrence["session_date"] }}
                                         </strong>

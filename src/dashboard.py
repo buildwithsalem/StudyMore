@@ -265,7 +265,10 @@ def get_upcoming_study_sessions(conn, user_id, now=None):
             occurrence_dates = []
             current_date = start_date
 
-            while current_date <= end_date:
+            while (
+                current_date <= end_date
+                and current_date <= start_date + timedelta(days=365)
+            ):
                 occurrence_dates.append(
                     current_date.strftime("%Y-%m-%d")
                 )
@@ -449,9 +452,8 @@ def get_dashboard_data(conn, user_id, now=None):
         "smart_matches": smart_matches,
         "stats": {
             "joined_groups_count": len(joined_groups),
-            "upcoming_meetings_count": (
-    len(upcoming_meetings) + len(upcoming_study_sessions)
-),
+            "upcoming_meetings_count": len(upcoming_meetings),
+            "upcoming_schedule_count": len(upcoming_schedule),
             "study_requests_count": len(study_requests),
             "smart_matches_count": len(smart_matches),
         },
