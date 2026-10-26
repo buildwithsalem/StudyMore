@@ -4,7 +4,7 @@ Handles data aggregation, upcoming meetings, study requests, smart match integra
 and rendering for the /dashboard route.
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta
 import sqlite3
 from flask import (
     Blueprint,
@@ -189,6 +189,122 @@ def get_upcoming_meetings(conn, user_id, now=None):
 
     return meetings
 
+def get_upcoming_study_sessions(conn, user_id, now=None):
+    """Returns upcoming scheduled study-session occurrences for the user."""
+    if not user_id:
+        return []
+
+    if now is None:
+        now = datetime.now()
+
+    rows = conn.execute(
+        """
+        SELECT
+            ss.*,
+            sg.group_name,
+            sg.course_code
+        FROM study_sessions ss
+        JOIN study_groups sg ON sg.id = ss.group_id
+        JOIN group_memberships gm ON gm.group_id = ss.group_id
+        WHERE gm.user_id = ?
+          AND ss.status = 'scheduled'
+        ORDER BY ss.session_date ASC, ss.start_time ASC
+        """,
+        (user_id,),
+    ).fetchall()
+
+    cancelled_rows = conn.execute(
+        """
+        SELECT session_id, occurrence_date
+        FROM cancelled_session_occurrences
+        """
+    ).fetchall()
+
+    cancelled_occurrences = {
+        (row["session_id"], row["occurrence_date"])
+        for row in cancelled_rows
+    }
+
+    edited_rows = conn.execute(
+        """
+        SELECT *
+        FROM edited_session_occurrences
+        """
+    ).fetchall()
+
+    edited_occurrences = {
+        (row["session_id"], row["original_occurrence_date"]): dict(row)
+        for row in edited_rows
+    }
+
+    upcoming = []
+
+    for row in rows:
+        study_session = dict(row)
+
+        start_date = datetime.strptime(
+            study_session["session_date"],
+            "%Y-%m-%d"
+        )
+
+        recurrence = study_session["recurrence"]
+        recurrence_end = study_session["recurrence_end_date"]
+
+        if recurrence == "none" or not recurrence_end:
+            occurrence_dates = [study_session["session_date"]]
+        else:
+            end_date = datetime.strptime(recurrence_end, "%Y-%m-%d")
+
+            if recurrence == "daily":
+                step = timedelta(days=1)
+            elif recurrence == "weekly":
+                step = timedelta(weeks=1)
+            else:
+                continue
+
+            occurrence_dates = []
+            current_date = start_date
+
+            while current_date <= end_date:
+                occurrence_dates.append(
+                    current_date.strftime("%Y-%m-%d")
+                )
+                current_date += step
+
+        for occurrence_date in occurrence_dates:
+            key = (study_session["id"], occurrence_date)
+
+            if key in cancelled_occurrences:
+                continue
+
+            occurrence = study_session.copy()
+            occurrence["original_occurrence_date"] = occurrence_date
+            occurrence["session_date"] = occurrence_date
+
+            if key in edited_occurrences:
+                edited = edited_occurrences[key]
+                occurrence["title"] = edited["title"]
+                occurrence["session_date"] = edited["session_date"]
+                occurrence["start_time"] = edited["start_time"]
+                occurrence["end_time"] = edited["end_time"]
+
+            occurrence_start = datetime.strptime(
+                f"{occurrence['session_date']} {occurrence['start_time']}",
+                "%Y-%m-%d %H:%M"
+            )
+
+            if occurrence_start > now:
+                upcoming.append(occurrence)
+
+    upcoming.sort(
+        key=lambda item: (
+            item["session_date"],
+            item["start_time"]
+        )
+    )
+
+    return upcoming
+
 
 def get_user_study_requests(conn, user_id):
     """
@@ -294,18 +410,48 @@ def get_dashboard_data(conn, user_id, now=None):
     user = get_user_info(conn, user_id)
     joined_groups = get_user_joined_groups(conn, user_id)
     upcoming_meetings = get_upcoming_meetings(conn, user_id, now=now)
+    upcoming_study_sessions = get_upcoming_study_sessions(
+    conn, user_id, now=now
+)
+    upcoming_schedule = []
+
+    for meeting in upcoming_meetings:
+        item = meeting.copy()
+        item["schedule_type"] = "meeting"
+        item["sort_date"] = item["meeting_date"]
+        item["sort_time"] = item["meeting_time"]
+        upcoming_schedule.append(item)
+
+    for study_session in upcoming_study_sessions:
+        item = study_session.copy()
+        item["schedule_type"] = "study_session"
+        item["sort_date"] = item["session_date"]
+        item["sort_time"] = item["start_time"]
+        upcoming_schedule.append(item)
+
+    upcoming_schedule.sort(
+        key=lambda item: (
+            item["sort_date"],
+            item["sort_time"]
+        )
+    )
     study_requests = get_user_study_requests(conn, user_id)
     smart_matches = get_user_smart_matches(conn, user_id)
+
 
     return {
         "user": user,
         "joined_groups": joined_groups,
         "upcoming_meetings": upcoming_meetings,
+        "upcoming_study_sessions": upcoming_study_sessions,
+        "upcoming_schedule": upcoming_schedule,
         "study_requests": study_requests,
         "smart_matches": smart_matches,
         "stats": {
             "joined_groups_count": len(joined_groups),
-            "upcoming_meetings_count": len(upcoming_meetings),
+            "upcoming_meetings_count": (
+    len(upcoming_meetings) + len(upcoming_study_sessions)
+),
             "study_requests_count": len(study_requests),
             "smart_matches_count": len(smart_matches),
         },
@@ -336,6 +482,8 @@ def dashboard():
         user_name=user_name,
         joined_groups=data["joined_groups"],
         upcoming_meetings=data["upcoming_meetings"],
+        upcoming_study_sessions=data["upcoming_study_sessions"],
+        upcoming_schedule=data["upcoming_schedule"],
         study_requests=data["study_requests"],
         smart_matches=data["smart_matches"],
         stats=data["stats"],

@@ -8,12 +8,55 @@
 </head>
 
 <body>
+    <header class="topbar">
+        <div class="topbar-inner">
+            <span class="brand">StudyMore</span>
+
+            <button
+                type="button"
+                class="menu-toggle"
+                aria-label="Toggle menu"
+                aria-controls="site-nav"
+                aria-expanded="false"
+                onclick="
+                    var n=document.getElementById('site-nav');
+                    n.classList.toggle('open');
+                    this.classList.toggle('open');
+                    this.setAttribute(
+                        'aria-expanded',
+                        n.classList.contains('open')
+                    );
+                "
+            >
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+
+            <nav id="site-nav">
+                <a href="{{ url_for('dashboard.dashboard') }}">Dashboard</a>
+                <a href="{{ url_for('search.search') }}">Search Groups</a>
+                <a href="{{ url_for('create_group') }}">Create Group</a>
+                <a href="{{ url_for('my_groups') }}">My Groups</a>
+                <a href="/study-request">Find My Match</a>
+                <a href="{{ url_for('availability') }}">Availability</a>
+                <a href="{{ url_for('schedule') }}" class="active">Schedule</a>
+                <a href="{{ url_for('profile.profile') }}">Profile</a>
+                <a href="{{ url_for('logout') }}">Log Out</a>
+            </nav>
+        </div>
+    </header>
+
     <main class="container">
         <h1>Study Schedule</h1>
         <p>Plan and keep track of your upcoming study sessions.</p>
 
-        <section>
-    <h2>Schedule New Session</h2>
+        <section class="dashboard-section">
+    <div class="schedule-form-card">
+        <h2 class="section-title">Schedule New Session</h2>
+        <p class="schedule-helper">
+            Create a one-time or recurring study session for one of your groups.
+        </p>
 
     {% if message %}
         <p>{{ message }}</p>
@@ -110,38 +153,189 @@
             Join a study group before scheduling a study session.
         </p>
     {% endif %}
+    </div>
 </section>
-        <section>
+
+<section class="schedule-upcoming">
+    <div class="schedule-section-header">
+        <div>
             <h2>Upcoming Sessions</h2>
+            <p>Your scheduled study sessions and recurring plans.</p>
+        </div>
+    </div>
 
-            {% if sessions %}
-                {% for study_session in sessions %}
-                    <div>
-                        <h3>{{ study_session["title"] }}</h3>
+    {% if session_groups %}
+        <div class="session-card-list">
 
-                        <p>
-                            {{ study_session["course_code"] }}
-                            — {{ study_session["group_name"] }}
-                        </p>
+            {% for group in session_groups %}
+                {% set study_session = group["session"] %}
 
-                        <p>
-                            {{ study_session["session_date"] }}
-                            |
-                            {{ study_session["start_time"] }}
-                            – {{ study_session["end_time"] }}
-                        </p>
+                <article class="session-series-card">
+
+                    <div class="session-series-header">
+                        <div>
+                            <h3>{{ study_session["title"] }}</h3>
+                            <p class="session-group-name">
+                                {{ study_session["course_code"] }}
+                                — {{ study_session["group_name"] }}
+                            </p>
+                        </div>
 
                         {% if study_session["recurrence"] != "none" %}
-                            <p>
-                                Repeats: {{ study_session["recurrence"] }}
-                            </p>
+                            <span class="session-repeat-badge">
+                                {{ study_session["recurrence"] }}
+                            </span>
+                        {% else %}
+                            <span class="session-repeat-badge">
+                                One-time
+                            </span>
                         {% endif %}
                     </div>
-                {% endfor %}
-            {% else %}
-                <p>No study sessions scheduled yet.</p>
-            {% endif %}
-        </section>
+
+
+                    {% if study_session["recurrence"] != "none" %}
+
+                        <div class="session-occurrences">
+
+                            {% for occurrence in group["occurrences"] %}
+                                <div class="session-occurrence-row">
+
+                                    <div class="session-occurrence-info">
+                                        <strong>
+                                            {{ occurrence["session_date"] }}
+                                        </strong>
+
+                                        <span>
+                                            {{ occurrence["start_time"] }}
+                                            –
+                                            {{ occurrence["end_time"] }}
+                                        </span>
+                                    </div>
+
+                                    <div class="session-occurrence-actions">
+
+                                        <a
+                                            class="session-action-edit"
+                                            href="{{ url_for(
+                                                'edit_session_occurrence',
+                                                session_id=occurrence['id'],
+                                                occurrence_date=occurrence['original_occurrence_date']
+                                            ) }}"
+                                        >
+                                            Edit
+                                        </a>
+
+                                        <form
+                                            method="POST"
+                                            action="{{ url_for(
+                                                'cancel_session_occurrence',
+                                                session_id=occurrence['id'],
+                                                occurrence_date=occurrence['original_occurrence_date']
+                                            ) }}"
+                                        >
+                                            <button
+                                                class="session-action-cancel"
+                                                type="submit"
+                                            >
+                                                Cancel
+                                            </button>
+                                        </form>
+
+                                    </div>
+                                </div>
+                            {% endfor %}
+
+                        </div>
+
+                        <div class="session-series-footer">
+
+                            <span>Series actions</span>
+
+                            <div class="session-series-actions">
+
+                                <a
+                                    class="session-series-edit"
+                                    href="{{ url_for(
+                                        'edit_study_session',
+                                        session_id=study_session['id']
+                                    ) }}"
+                                >
+                                    Edit Series
+                                </a>
+
+                                <form
+                                    method="POST"
+                                    action="{{ url_for(
+                                        'cancel_study_session',
+                                        session_id=study_session['id']
+                                    ) }}"
+                                >
+                                    <button
+                                        class="session-series-cancel"
+                                        type="submit"
+                                    >
+                                        Cancel Series
+                                    </button>
+                                </form>
+
+                            </div>
+                        </div>
+
+
+                    {% else %}
+
+                        <div class="session-occurrence-row">
+
+                            <div class="session-occurrence-info">
+                                <strong>
+                                    {{ study_session["session_date"] }}
+                                </strong>
+
+                                <span>
+                                    {{ study_session["start_time"] }}
+                                    –
+                                    {{ study_session["end_time"] }}
+                                </span>
+                            </div>
+
+                            <div class="session-occurrence-actions">
+
+                                <form
+                                    method="POST"
+                                    action="{{ url_for(
+                                        'cancel_study_session',
+                                        session_id=study_session['id']
+                                    ) }}"
+                                >
+                                    <button
+                                        class="session-action-cancel"
+                                        type="submit"
+                                    >
+                                        Cancel
+                                    </button>
+                                </form>
+
+                            </div>
+                        </div>
+
+                    {% endif %}
+
+                </article>
+            {% endfor %}
+
+        </div>
+
+    {% else %}
+
+        <div class="schedule-empty-state">
+            <h3>No upcoming sessions</h3>
+            <p>
+                Schedule a study session above and it will appear here.
+            </p>
+        </div>
+
+    {% endif %}
+</section>
     </main>
 </body>
 </html>

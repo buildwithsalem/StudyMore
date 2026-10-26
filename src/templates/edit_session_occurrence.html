@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit This Session | StudyMore</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+
+<header class="topbar">
+    <div class="site-nav">
+        <a class="brand" href="/dashboard">StudyMore</a>
+
+        <nav>
+            <a href="/dashboard">Dashboard</a>
+            <a href="/search">Search Groups</a>
+            <a href="/create-group">Create Group</a>
+            <a href="/my-groups">My Groups</a>
+            <a href="/study-request">Find My Match</a>
+            <a href="/availability">Availability</a>
+            <a href="/schedule" class="active">Schedule</a>
+            <a href="/profile">Profile</a>
+            <a href="/logout">Log Out</a>
+        </nav>
+    </div>
+</header>
+
+<main class="container">
+
+    <div class="schedule-page-heading">
+        <h1>Edit This Session</h1>
+        <p>
+            Update this individual occurrence without changing the rest
+            of the recurring series.
+        </p>
+    </div>
+
+    <section class="schedule-form-card">
+
+        <div class="schedule-form-heading">
+            <h2>{{ study_session["title"] }}</h2>
+            <p>
+                {{ study_session["course_code"] }}
+                — {{ study_session["group_name"] }}
+            </p>
+        </div>
+
+        <div class="session-edit-note">
+            This will change only this occurrence, not the entire series.
+        </div>
+
+        <form
+            method="POST"
+            action="{{ url_for(
+                'update_session_occurrence',
+                session_id=study_session['id'],
+                occurrence_date=occurrence_date
+            ) }}"
+            class="schedule-form"
+        >
+
+            <div class="schedule-field">
+                <label for="title">Session Title *</label>
+                <input
+                    type="text"
+                    id="title"
+                    name="title"
+                    value="{{
+                        edited_occurrence['title']
+                        if edited_occurrence
+                        else study_session['title']
+                    }}"
+                    required
+                >
+            </div>
+
+            <div class="schedule-form-row">
+
+                <div class="schedule-field">
+                    <label for="session_date">Date *</label>
+                    <input
+                        type="date"
+                        id="session_date"
+                        name="session_date"
+                        value="{{
+                            edited_occurrence['session_date']
+                            if edited_occurrence
+                            else occurrence_date
+                        }}"
+                        required
+                    >
+                </div>
+
+                <div class="schedule-field">
+                    <label for="start_time">Start Time *</label>
+                    <input
+                        type="time"
+                        id="start_time"
+                        name="start_time"
+                        value="{{
+                            edited_occurrence['start_time']
+                            if edited_occurrence
+                            else study_session['start_time']
+                        }}"
+                        required
+                    >
+                </div>
+
+            </div>
+
+            <div class="schedule-form-row">
+
+                <div class="schedule-field">
+                    <label for="end_time">End Time *</label>
+                    <input
+                        type="time"
+                        id="end_time"
+                        name="end_time"
+                        value="{{
+                            edited_occurrence['end_time']
+                            if edited_occurrence
+                            else study_session['end_time']
+                        }}"
+                        required
+                    >
+                </div>
+
+            </div>
+
+            <div class="schedule-edit-actions">
+                <button type="submit" class="schedule-submit">
+                    Save Changes
+                </button>
+
+                <a href="{{ url_for('schedule') }}" class="schedule-back-link">
+                    Cancel
+                </a>
+            </div>
+
+        </form>
+
+    </section>
+
+</main>
+
+</body>
+</html>

@@ -1510,3 +1510,317 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
   * { transition: none !important; }
 }
 /* === StudyMore theme v2 END === */
+
+/* ================================
+   Study Schedule
+   ================================ */
+
+.schedule-form-card {
+    background: #ffffff;
+    border: 1px solid #e8e2ff;
+    border-radius: 18px;
+    padding: 28px;
+    margin-top: 22px;
+    margin-bottom: 32px;
+    box-shadow: 0 8px 24px rgba(92, 72, 180, 0.08);
+}
+
+.schedule-form-card .section-title {
+    margin: 0 0 6px;
+    font-size: 22px;
+}
+
+.schedule-helper {
+    color: #6f6a89;
+    margin: 0 0 24px;
+}
+
+.schedule-form-card form {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+}
+
+.schedule-form-card form > div {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.schedule-form-card form > div:nth-child(1),
+.schedule-form-card form > div:nth-child(2),
+.schedule-form-card form > div:nth-child(6) {
+    grid-column: 1 / -1;
+}
+
+.schedule-form-card label {
+    font-weight: 600;
+    color: #302b4d;
+}
+
+.schedule-form-card input,
+.schedule-form-card select {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 12px 14px;
+    border: 1px solid #ddd6fe;
+    border-radius: 10px;
+    background: #ffffff;
+    font: inherit;
+    color: #302b4d;
+}
+
+.schedule-form-card input:focus,
+.schedule-form-card select:focus {
+    outline: none;
+    border-color: #8b5cf6;
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+}
+
+.schedule-form-card button[type="submit"] {
+    grid-column: 1 / -1;
+    justify-self: start;
+    border: none;
+    border-radius: 10px;
+    padding: 12px 22px;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    background: linear-gradient(135deg, #7c5cff, #4f7cff);
+    color: white;
+    box-shadow: 0 6px 16px rgba(92, 92, 220, 0.2);
+}
+
+.schedule-form-card button[type="submit"]:hover {
+    transform: translateY(-1px);
+}
+
+@media (max-width: 700px) {
+    .schedule-form-card form {
+        grid-template-columns: 1fr;
+    }
+
+    .schedule-form-card form > div {
+        grid-column: 1 / -1;
+    }
+}
+/* === Upcoming Study Sessions === */
+
+.schedule-upcoming {
+    margin-top: 34px;
+    margin-bottom: 60px;
+}
+
+.schedule-section-header {
+    margin-bottom: 18px;
+}
+
+.schedule-section-header h2 {
+    margin: 0 0 6px;
+    font-size: 26px;
+}
+
+.schedule-section-header p {
+    margin: 0;
+    color: var(--muted);
+}
+
+.session-card-list {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.session-series-card {
+    background: #ffffff;
+    border: 1px solid #e4ddff;
+    border-radius: 18px;
+    padding: 24px 28px;
+    box-shadow: 0 10px 30px rgba(73, 55, 140, 0.06);
+}
+
+.session-series-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid #eeeafc;
+}
+
+.session-series-header h3 {
+    margin: 0 0 6px;
+    font-size: 20px;
+}
+
+.session-group-name {
+    margin: 0;
+    color: var(--muted);
+}
+
+.session-repeat-badge {
+    background: #eee9ff;
+    color: #6848e8;
+    padding: 7px 13px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: capitalize;
+}
+
+.session-occurrences {
+    display: flex;
+    flex-direction: column;
+}
+
+.session-occurrence-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 17px 0;
+    border-bottom: 1px solid #f0edf8;
+}
+
+.session-occurrence-info {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+}
+
+.session-occurrence-info strong {
+    font-size: 15px;
+}
+
+.session-occurrence-info span {
+    color: var(--muted);
+}
+
+.session-occurrence-actions,
+.session-series-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.session-occurrence-actions form,
+.session-series-actions form {
+    margin: 0;
+}
+
+.session-action-edit,
+.session-series-edit {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 14px;
+    border-radius: 9px;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 600;
+    color: #6046dc;
+    background: #f0ecff;
+}
+
+.session-action-cancel,
+.session-series-cancel {
+    padding: 8px 14px;
+    border-radius: 9px;
+    border: 1px solid #e1dcec;
+    background: #ffffff;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.session-series-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    padding-top: 18px;
+}
+
+.session-series-footer > span {
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.session-series-cancel {
+    color: #b42318;
+    border-color: #f2c7c4;
+}
+
+.schedule-empty-state {
+    background: #ffffff;
+    border: 1px dashed #d9d0ff;
+    border-radius: 18px;
+    padding: 32px;
+    text-align: center;
+}
+
+.schedule-empty-state h3 {
+    margin: 0 0 7px;
+}
+
+.schedule-empty-state p {
+    margin: 0;
+    color: var(--muted);
+}
+
+@media (max-width: 700px) {
+    .session-series-header,
+    .session-occurrence-row,
+    .session-series-footer {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .session-occurrence-info {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 5px;
+    }
+}
+/* === Edit Study Session Pages === */
+
+.session-edit-note {
+    margin: 16px 0 4px;
+    padding: 13px 16px;
+    background: #f5f2ff;
+    border: 1px solid #e5ddff;
+    border-radius: 10px;
+    color: #625b78;
+    font-size: 14px;
+}
+
+.schedule-edit-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 22px;
+    width: 100%;
+}
+
+.schedule-edit-actions .schedule-submit {
+    width: auto;
+    min-width: 150px;
+}
+
+.schedule-back-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 11px 18px;
+    border: 1px solid #ddd7ef;
+    border-radius: 10px;
+    background: #ffffff;
+    color: #5f5874;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.schedule-back-link:hover {
+    background: #f7f5fc;
+}
