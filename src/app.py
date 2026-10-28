@@ -25,10 +25,17 @@ app.add_template_filter(safe_meeting_url, "safe_meeting_url")
 import os
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", os.urandom(24))
 app.register_blueprint(search_bp)
-from student_profile import profile_bp
+from student_profile import profile_bp, ensure_table as ensure_profile_table, get_member_cards
 app.register_blueprint(profile_bp)
 app.register_blueprint(duplicate_bp)
 app.register_blueprint(dashboard_bp)
+from verification import (
+    verification_bp, ensure_verification_schema, issue_code,
+    issue_code_if_due, is_uta_email,
+)
+app.register_blueprint(verification_bp)
+from invitations import invitations_bp, ensure_invitation_schema
+app.register_blueprint(invitations_bp)
 
 
 def init_db(database=None):
@@ -36,6 +43,8 @@ def init_db(database=None):
     conn = sqlite3.connect(database or app.config["DATABASE"])
     try:
         _create_tables(conn)
+        ensure_verification_schema(conn)
+        ensure_invitation_schema(conn)
         conn.commit()
     finally:
         conn.close()
@@ -466,6 +475,13 @@ def group_details(group_id):
         group["meeting_date"], group["meeting_time"]
     )
 
+    ensure_profile_table(conn)
+    members = get_member_cards(conn, group_id, group["creator_user_id"])
+    stale_open = (
+        display_status == "Completed"
+        and (group["status"] or "").strip().lower() == "open"
+    )
+
     conn.close()
 
     return render_template(
@@ -474,8 +490,117 @@ def group_details(group_id):
         member_count=member_count,
         is_member=is_member,
         is_creator=is_creator,
-        display_status=display_status
+        display_status=display_status,
+        members=members,
+        stale_open=stale_open
     )
+
+
+@app.route("/group/<int:group_id>/edit", methods=["GET", "POST"])
+def edit_group(group_id):
+    user_id = session.get("user_id")
+
+    if user_id is None:
+        return redirect(url_for("login"))
+
+    conn = get_db_connection()
+    conn.row_factory = sqlite3.Row
+
+    group = conn.execute(
+        "SELECT * FROM study_groups WHERE id = ?", (group_id,)
+    ).fetchone()
+
+    if group is None:
+        conn.close()
+        return "Study group not found", 404
+
+    if group["creator_user_id"] != user_id:
+        conn.close()
+        return "Only the group creator can edit this group", 403
+
+    member_count = conn.execute(
+        "SELECT COUNT(*) FROM group_memberships WHERE group_id = ?",
+        (group_id,)
+    ).fetchone()[0]
+
+    if request.method == "GET":
+        conn.close()
+        return render_template(
+            "edit_group.html",
+            group=group,
+            form=group,
+            member_count=member_count,
+            error=None
+        )
+
+    form = request.form
+    group_name = (form.get("group_name") or "").strip()
+    description = (form.get("description") or "").strip()
+    meeting_type = (form.get("meeting_type") or "").strip()
+    meeting_date = (form.get("meeting_date") or "").strip()
+    meeting_time = (form.get("meeting_time") or "").strip()
+    location = (form.get("location") or "").strip()
+    meeting_link = (form.get("meeting_link") or "").strip()
+    max_members_raw = form.get("max_members")
+
+    error = None
+    max_members = None
+
+    if not (group_name and description and meeting_type
+            and meeting_date and meeting_time):
+        error = "Please fill in every required field."
+    elif meeting_type not in ("In-Person", "Online", "Hybrid"):
+        error = "Please choose a valid meeting type."
+    else:
+        try:
+            max_members = int(max_members_raw)
+        except (TypeError, ValueError):
+            error = "Maximum members must be a number."
+
+    if error is None and max_members < 2:
+        error = "Maximum members must be at least 2."
+    if error is None and max_members < member_count:
+        error = (
+            f"This group already has {member_count} members, so the "
+            f"maximum can't be lower than {member_count}."
+        )
+    if error is None and meeting_has_passed(meeting_date, meeting_time):
+        error = "Meeting date and time must be in the future."
+    if error is None and meeting_type == "In-Person" and not location:
+        error = "Location is required for in-person groups."
+    if error is None and meeting_type == "Online" and not meeting_link:
+        error = "Meeting link is required for online groups."
+    if error is None and meeting_type == "Hybrid" and not (location and meeting_link):
+        error = "Location and meeting link are required for hybrid groups."
+    if error is None:
+        meeting_link, link_error = validate_meeting_link(meeting_link)
+        error = link_error
+
+    if error is not None:
+        conn.close()
+        return render_template(
+            "edit_group.html",
+            group=group,
+            form=form,
+            member_count=member_count,
+            error=error
+        ), 400
+
+    conn.execute(
+        """
+        UPDATE study_groups
+        SET group_name = ?, description = ?, meeting_type = ?,
+            meeting_date = ?, meeting_time = ?, location = ?,
+            meeting_link = ?, max_members = ?
+        WHERE id = ?
+        """,
+        (group_name, description, meeting_type, meeting_date, meeting_time,
+         location, meeting_link, max_members, group_id)
+    )
+    conn.commit()
+    conn.close()
+
+    return redirect(url_for("group_details", group_id=group_id))
 
 
 @app.route("/group/<int:group_id>/status", methods=["POST"])
@@ -2187,11 +2312,10 @@ def register():
         if not name or not email or not password or not confirm_password:
             return "Name, email, password, and confirm password are required", 400
         
-        UTA_EMAIL_DOMAIN = "@mavs.uta.edu"
-        if not email.endswith(UTA_EMAIL_DOMAIN):
+        if not is_uta_email(email):
             return (
-                f"Please register with your UTA student email address "
-                f"(must end in {UTA_EMAIL_DOMAIN})",
+                "Please register with your UTA student email address "
+                "(must end in @mavs.uta.edu)",
                 400
             )
 
@@ -2210,10 +2334,12 @@ def register():
             return "An account with that email already exists", 400
 
         hashed_password = generate_password_hash(password)
+        ensure_verification_schema(conn)
 
         try:
-            conn.execute(
-                "INSERT INTO users (name, email, password) VALUES (?, ?, ?)",
+            cursor = conn.execute(
+                "INSERT INTO users (name, email, password, email_verified) "
+                "VALUES (?, ?, ?, 0)",
                 (name, email, hashed_password),
             )
         except sqlite3.IntegrityError:
@@ -2222,9 +2348,14 @@ def register():
             return "An account with that email already exists", 400
 
         conn.commit()
+        new_user_id = cursor.lastrowid
+        issue_code(conn, new_user_id, email)
         conn.close()
 
-        return redirect(url_for("login"))
+        # Not logged in yet: the student has to confirm the code first.
+        session.pop("user_id", None)
+        session["pending_verify_user_id"] = new_user_id
+        return redirect(url_for("verification.verify"))
 
     return render_template("register.html")
 
@@ -2251,6 +2382,14 @@ def login():
 
         if user is None or not check_password_hash(user["password"], password):
             return "Invalid email or password", 400
+
+        if "email_verified" in user.keys() and not user["email_verified"]:
+            # Right password, but the UTA email was never confirmed.
+            conn = get_db_connection()
+            issue_code_if_due(conn, user["id"], user["email"])
+            session.pop("user_id", None)
+            session["pending_verify_user_id"] = user["id"]
+            return redirect(url_for("verification.verify"))
 
         session["user_id"] = user["id"]
         session["user_name"] = user["name"]

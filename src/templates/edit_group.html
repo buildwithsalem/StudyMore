@@ -3,10 +3,11 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Create Study Group | StudyMore</title>
+    <title>Edit Group | StudyMore</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
     </head>
 
 <body>
@@ -14,23 +15,31 @@
 <header class="topbar">
     <span class="brand">StudyMore</span>
 
-    <nav>
+    
+    <button type="button" class="menu-toggle" aria-label="Toggle menu" aria-controls="site-nav" aria-expanded="false" onclick="var n=document.getElementById('site-nav');n.classList.toggle('open');this.classList.toggle('open');this.setAttribute('aria-expanded', n.classList.contains('open'));">
+        <span></span><span></span><span></span>
+    </button>
+
+    <nav id="site-nav">
         <a href="{{ url_for('dashboard.dashboard') }}">Dashboard</a>
         <a href="{{ url_for('search.search') }}">Search Groups</a>
         <a href="{{ url_for('create_group') }}" class="active">Create Group</a>
         <a href="{{ url_for('my_groups') }}">My Groups</a>
+        <a href="{{ url_for('invitations.inbox') }}"{% if request.endpoint == 'invitations.inbox' %} class="active"{% endif %}>Invitations{% if pending_invite_count %}<span class="nav-badge">{{ pending_invite_count }}</span>{% endif %}</a>
         <a href="{{ url_for('study_request') }}">Find My Match</a>
         <a href="{{ url_for('availability') }}">Availability</a>
         <a href="{{ url_for('profile.profile') }}">Profile</a>
         <a href="{{ url_for('logout') }}">Log Out</a>
     </nav>
 </header>
+<div class="crumbs"><a href="#" class="back-link" onclick="history.back();return false;">&larr; Back</a></div>
+
 
 <main class="create-main">
 
     <div class="page-heading">
-        <h1>Create a Study Group</h1>
-        <p>Add the details students need to find and join your study group.</p>
+        <h1>Edit {{ group["group_name"] }}</h1>
+        <p>{{ group["course_code"] }} stays the same. Change the details members need.</p>
     </div>
     {% if error %}
     <div class="message error" role="alert">
@@ -39,9 +48,6 @@
 {% endif %}
 
     <form method="POST" class="create-form">
-        <input type="hidden" name="partner_id" value="{{ partner_id or '' }}">
-        <input type="hidden" name="request_id" value="{{ request_id or '' }}">
-        <input type="hidden" name="partner_request_id" value="{{ partner_request_id or '' }}">
 
         <div class="form-section">
             <h2>Group Information</h2>
@@ -53,41 +59,8 @@
                     id="group_name"
                     name="group_name"
                     placeholder="Example: CSE 3311 Exam Study Group"
-                    value="{{ form.get('group_name', '') if form else '' }}"
+                    value="{{ form['group_name'] or '' }}"
                     required>
-            </label>
-
-            <div class="form-grid">
-                <label for="course_code">
-                    <span>Course Code <span class="required">*</span></span>
-                    <input
-                        type="text"
-                        id="course_code"
-                        name="course_code"
-                        placeholder="Example: CSE 3311"
-                        value="{{ form.get('course_code', '') if form else '' }}"
-                        required>
-                </label>
-
-                <label for="section">
-                    <span>Section <span class="optional">(optional)</span></span>
-                    <input
-                        type="text"
-                        id="section"
-                        name="section"
-                        placeholder="Example: 001"
-                        value="{{ form.get('section', '') if form else '' }}">
-                </label>
-            </div>
-
-            <label for="study_goal">
-                <span>Study Goal <span class="optional">(optional)</span></span>
-                <input
-                    type="text"
-                    id="study_goal"
-                    name="study_goal"
-                    placeholder="Example: Exam"
-                    value="{{ form.get('study_goal', '') if form else '' }}">
             </label>
 
             <label for="description">
@@ -97,7 +70,7 @@
                     name="description"
                     rows="4"
                     placeholder="Describe what your group plans to study."
-                    required>{{ form.get('description', '') if form else '' }}</textarea>
+                    required>{{ form['description'] or '' }}</textarea>
             </label>
         </div>
 
@@ -116,7 +89,7 @@
                         id="in_person"
                         name="meeting_type"
                         value="In-Person"
-                        {% if form and form.get('meeting_type') == 'In-Person' %}checked{% endif %}
+                        {% if form['meeting_type'] == 'In-Person' %}checked{% endif %}
                         required>
                     <span>In-Person</span>
                 </label>
@@ -127,7 +100,7 @@
                         id="online"
                         name="meeting_type"
                         value="Online"
-                        {% if form and form.get('meeting_type') == 'Online' %}checked{% endif %}>
+                        {% if form['meeting_type'] == 'Online' %}checked{% endif %}>
                     <span>Online</span>
                 </label>
 
@@ -137,7 +110,7 @@
                         id="hybrid"
                         name="meeting_type"
                         value="Hybrid"
-                        {% if form and form.get('meeting_type') == 'Hybrid' %}checked{% endif %}>
+                        {% if form['meeting_type'] == 'Hybrid' %}checked{% endif %}>
                     <span>Hybrid</span>
                 </label>
             </fieldset>
@@ -149,7 +122,7 @@
                         type="date"
                         id="meeting_date"
                         name="meeting_date"
-                        value="{{ form.get('meeting_date', '') if form else '' }}"
+                        value="{{ form['meeting_date'] or '' }}"
                         required>
                 </label>
 
@@ -159,7 +132,7 @@
                         type="time"
                         id="meeting_time"
                         name="meeting_time"
-                        value="{{ form.get('meeting_time', '') if form else '' }}"
+                        value="{{ form['meeting_time'] or '' }}"
                         required>
                 </label>
             </div>
@@ -175,7 +148,7 @@
                         id="location"
                         name="location"
                         placeholder="Example: UTA Central Library"
-                        value="{{ form.get('location', '') if form else '' }}">
+                        value="{{ form['location'] or '' }}">
                 </label>
 
                 <label for="meeting_link">
@@ -188,7 +161,7 @@
                         id="meeting_link"
                         name="meeting_link"
                         placeholder="Example: Teams or Zoom link"
-                        value="{{ form.get('meeting_link', '') if form else '' }}">
+                        value="{{ form['meeting_link'] or '' }}">
                 </label>
             </div>
 
@@ -198,9 +171,9 @@
                     type="number"
                     id="max_members"
                     name="max_members"
-                    min="2"
-                    placeholder="Minimum 2"
-                    value="{{ form.get('max_members', '') if form else '' }}"
+                    min="{{ [2, member_count]|max }}"
+                    placeholder="Minimum {{ [2, member_count]|max }}"
+                    value="{{ form['max_members'] or '' }}"
                     required>
             </label>
 
@@ -211,8 +184,9 @@
         </p>
 
         <button type="submit" class="primary create-button">
-            Create Group
+            Save Changes
         </button>
+        <a href="{{ url_for('group_details', group_id=group['id']) }}" class="secondary">Cancel</a>
 
     </form>
 

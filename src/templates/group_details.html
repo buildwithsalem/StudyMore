@@ -25,6 +25,7 @@
         <a href="{{ url_for('search.search') }}">Search Groups</a>
         <a href="{{ url_for('create_group') }}">Create Group</a>
         <a href="{{ url_for('my_groups') }}">My Groups</a>
+        <a href="{{ url_for('invitations.inbox') }}"{% if request.endpoint == 'invitations.inbox' %} class="active"{% endif %}>Invitations{% if pending_invite_count %}<span class="nav-badge">{{ pending_invite_count }}</span>{% endif %}</a>
         <a href="{{ url_for('study_request') }}">Find My Match</a>
         <a href="{{ url_for('availability') }}">Availability</a>
         <a href="{{ url_for('profile.profile') }}">Profile</a>
@@ -35,10 +36,6 @@
 
 
 <main class="details-main">
-
-    <a class="back-link" href="{{ url_for('search.search') }}">
-        ← Back to Search Groups
-    </a>
 
     <article class="details-card">
 
@@ -64,6 +61,11 @@
                 <h2>About this group</h2>
                 <p>{{ group["description"] }}</p>
             </div>
+        {% endif %}
+
+        {% if stale_open %}
+            <p class="edit-hint">This group's meeting time has already passed, so it shows as Completed.
+                {% if is_creator %}Use Edit Details to set a new date and time.{% endif %}</p>
         {% endif %}
 
         <div class="group-info-grid">
@@ -113,6 +115,25 @@
 
         </div>
 
+        {% if members %}
+        <section class="members-section">
+            <h2>Members ({{ members|length }})</h2>
+            <ul class="member-list">
+                {% for m in members %}
+                <li class="member-card">
+                    <span class="member-avatar" aria-hidden="true" style="background: {{ m.color }};">{{ m.initials }}</span>
+                    <div class="member-info">
+                        <div class="member-name">{{ m.name }}{% if m.is_creator %}<span class="member-badge">Creator</span>{% endif %}</div>
+                        {% if m.headline or m.study_style %}
+                            <div class="member-meta">{{ m.headline }}{% if m.headline and m.study_style %} · {% endif %}{{ m.study_style }}</div>
+                        {% endif %}
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+        </section>
+        {% endif %}
+
         <div class="details-actions">
             <a href="{{ url_for('availability_heatmap', group_id=group['id']) }}"
        class="primary">
@@ -123,6 +144,9 @@
 
     <div class="creator-status-control">
         <span class="membership-note">✓ You created this group</span>
+
+        <a href="{{ url_for('edit_group', group_id=group['id']) }}" class="secondary">Edit Details</a>
+        <a href="{{ url_for('invitations.manage_group', group_id=group['id']) }}" class="secondary">Members &amp; Invitations</a>
 
         {% if display_status != "Completed" %}
             <form method="POST" action="{{ url_for('set_group_status', group_id=group['id']) }}">

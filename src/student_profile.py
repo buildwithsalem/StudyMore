@@ -32,6 +32,16 @@ MEETING_PREFERENCES = ("In-Person", "Online", "Hybrid", "No preference")
 GROUP_SIZES = ("2 to 3 students", "4 to 5 students", "6 or more", "No preference")
 STUDY_GOALS = ("Exam", "Assignment / Project", "Final Exam", "Weekly Study", "Other")
 
+AVATAR_COLORS = {
+    "purple": "#6c4ef5",
+    "blue": "#2f7df6",
+    "teal": "#0f8d74",
+    "pink": "#e0486a",
+    "orange": "#d9730d",
+    "slate": "#4b5563",
+}
+DEFAULT_AVATAR = "purple"
+
 MAX_NAME = 60
 MAX_BIO = 300
 MAX_SHORT = 80
@@ -62,10 +72,18 @@ def ensure_table(conn):
             can_help TEXT,
             need_help TEXT,
             interests TEXT,
+            avatar_color TEXT DEFAULT 'purple',
+            show_in_groups INTEGER DEFAULT 1,
             FOREIGN KEY (user_id) REFERENCES users(id)
         )
         """
     )
+    # Databases made before these two columns existed get them added here.
+    existing = {row[1] for row in conn.execute("PRAGMA table_info(user_profiles)")}
+    if "avatar_color" not in existing:
+        conn.execute("ALTER TABLE user_profiles ADD COLUMN avatar_color TEXT DEFAULT 'purple'")
+    if "show_in_groups" not in existing:
+        conn.execute("ALTER TABLE user_profiles ADD COLUMN show_in_groups INTEGER DEFAULT 1")
 
 
 def split_list(text):
@@ -103,6 +121,8 @@ def empty_values(name=""):
         "can_help": "",
         "need_help": "",
         "interests": "",
+        "avatar_color": DEFAULT_AVATAR,
+        "show_in_groups": True,
     }
 
 
@@ -113,9 +133,14 @@ def load_profile(conn, user):
     ).fetchone()
     if row is not None:
         for key in values:
-            if key in row.keys() and key != "study_goals":
+            if key in row.keys() and key not in (
+                "study_goals", "avatar_color", "show_in_groups"
+            ):
                 values[key] = row[key] or ""
         values["study_goals"] = split_list(row["study_goals"])
+        if row["avatar_color"] in AVATAR_COLORS:
+            values["avatar_color"] = row["avatar_color"]
+        values["show_in_groups"] = row["show_in_groups"] != 0
     return values
 
 
@@ -136,6 +161,11 @@ def clean_form(form):
     values["study_style"] = text_of("study_style")
     values["meeting_pref"] = text_of("meeting_pref")
     values["group_size"] = text_of("group_size")
+    values["avatar_color"] = text_of("avatar_color") or DEFAULT_AVATAR
+    values["show_in_groups"] = form.get("show_in_groups") == "on"
+
+    if values["avatar_color"] not in AVATAR_COLORS:
+        errors.append("Please choose a valid avatar color.")
 
     if not values["display_name"]:
         errors.append("Please enter a display name.")
@@ -193,8 +223,8 @@ def save_profile(conn, user_id, values):
         INSERT INTO user_profiles
             (user_id, bio, major, minor, class_year, grad_term, courses,
              study_style, meeting_pref, group_size, study_goals,
-             can_help, need_help, interests)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             can_help, need_help, interests, avatar_color, show_in_groups)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(user_id) DO UPDATE SET
             bio = excluded.bio,
             major = excluded.major,
@@ -208,7 +238,9 @@ def save_profile(conn, user_id, values):
             study_goals = excluded.study_goals,
             can_help = excluded.can_help,
             need_help = excluded.need_help,
-            interests = excluded.interests
+            interests = excluded.interests,
+            avatar_color = excluded.avatar_color,
+            show_in_groups = excluded.show_in_groups
         """,
         (
             user_id,
@@ -225,6 +257,8 @@ def save_profile(conn, user_id, values):
             values["can_help"],
             values["need_help"],
             values["interests"],
+            values["avatar_color"],
+            1 if values["show_in_groups"] else 0,
         ),
     )
     conn.commit()
@@ -242,6 +276,46 @@ def initials_of(name):
     if not words:
         return "?"
     return "".join(word[0] for word in words[:2]).upper()
+
+
+def get_member_cards(conn, group_id, creator_id):
+    """
+    The people in a group, for the group page. Only name, avatar and (when the
+    student allows it) class year, major and study style are returned. Never
+    an email address.
+    """
+    ensure_table(conn)
+    rows = conn.execute(
+        """
+        SELECT u.id, u.name, p.class_year, p.major, p.study_style,
+               p.avatar_color, p.show_in_groups
+        FROM group_memberships gm
+        JOIN users u ON u.id = gm.user_id
+        LEFT JOIN user_profiles p ON p.user_id = u.id
+        WHERE gm.group_id = ?
+        ORDER BY (u.id = ?) DESC, u.name
+        """,
+        (group_id, creator_id),
+    ).fetchall()
+
+    cards = []
+    for row in rows:
+        visible = row["show_in_groups"] != 0
+        headline = " · ".join(
+            part for part in (row["class_year"], row["major"]) if part
+        ) if visible else ""
+        cards.append(
+            {
+                "id": row["id"],
+                "name": row["name"],
+                "initials": initials_of(row["name"]),
+                "color": AVATAR_COLORS.get(row["avatar_color"], AVATAR_COLORS[DEFAULT_AVATAR]),
+                "headline": headline,
+                "study_style": (row["study_style"] or "") if visible else "",
+                "is_creator": row["id"] == creator_id,
+            }
+        )
+    return cards
 
 
 @profile_bp.route("/profile", methods=["GET", "POST"])
@@ -308,6 +382,8 @@ def profile():
             group_sizes=GROUP_SIZES,
             study_goals=STUDY_GOALS,
             max_bio=MAX_BIO,
+            avatar_colors=AVATAR_COLORS,
+            avatar_hex=AVATAR_COLORS.get(values["avatar_color"], AVATAR_COLORS[DEFAULT_AVATAR]),
         ),
         status_code,
     )

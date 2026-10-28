@@ -24,6 +24,7 @@
     <a href="{{ url_for('search.search') }}">Search Groups</a>
     <a href="{{ url_for('create_group') }}">Create Group</a>
     <a href="{{ url_for('my_groups') }}">My Groups</a>
+    <a href="{{ url_for('invitations.inbox') }}"{% if request.endpoint == 'invitations.inbox' %} class="active"{% endif %}>Invitations{% if pending_invite_count %}<span class="nav-badge">{{ pending_invite_count }}</span>{% endif %}</a>
     <a href="{{ url_for('study_request') }}">Find My Match</a>
     <a href="{{ url_for('availability') }}">Availability</a>
     <a href="{{ url_for('schedule') }}">Schedule</a>
@@ -33,6 +34,13 @@
 </header>
 
 <main>
+
+{% if pending_invite_count %}
+<div class="message success invite-banner" role="status">
+  You have {{ pending_invite_count }} pending group invitation{{ '' if pending_invite_count == 1 else 's' }}.
+  <a href="{{ url_for('invitations.inbox') }}">View invitations</a>
+</div>
+{% endif %}
   <!-- Welcome Header -->
   <section class="dashboard-welcome">
     <div>

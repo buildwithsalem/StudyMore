@@ -25,6 +25,7 @@
         <a href="{{ url_for('search.search') }}">Search Groups</a>
         <a href="{{ url_for('create_group') }}">Create Group</a>
         <a href="{{ url_for('my_groups') }}">My Groups</a>
+        <a href="{{ url_for('invitations.inbox') }}"{% if request.endpoint == 'invitations.inbox' %} class="active"{% endif %}>Invitations{% if pending_invite_count %}<span class="nav-badge">{{ pending_invite_count }}</span>{% endif %}</a>
         <a href="{{ url_for('study_request') }}">Find My Match</a>
         <a href="{{ url_for('availability') }}">Availability</a>
         <a class="active" href="{{ url_for('profile.profile') }}">Profile</a>
@@ -37,7 +38,7 @@
 <main class="create-main profile-main">
 
     <section class="profile-header">
-        <div class="profile-avatar" aria-hidden="true">{{ initials }}</div>
+        <div class="profile-avatar" aria-hidden="true" style="background: {{ avatar_hex }};">{{ initials }}</div>
 
         <div class="profile-headline">
             <h1>{{ values.display_name or "Your profile" }}</h1>
@@ -86,6 +87,27 @@
                           placeholder="Example: Junior who studies best in the evenings and loves explaining things.">{{ values.bio }}</textarea>
                 <small class="field-hint">Up to {{ max_bio }} characters.</small>
             </label>
+
+            <fieldset class="avatar-picker">
+                <legend>Avatar color</legend>
+                <div class="swatch-row">
+                    {% for key, hex in avatar_colors.items() %}
+                        <label class="swatch">
+                            <input type="radio" name="avatar_color" value="{{ key }}"
+                                   {% if values.avatar_color == key %}checked{% endif %}>
+                            <span class="swatch-dot" style="background: {{ hex }};" title="{{ key|title }}"></span>
+                            <span class="sr-only">{{ key|title }}</span>
+                        </label>
+                    {% endfor %}
+                </div>
+            </fieldset>
+
+            <label class="checkbox privacy-toggle" for="show_in_groups">
+                <input type="checkbox" id="show_in_groups" name="show_in_groups"
+                       {% if values.show_in_groups %}checked{% endif %}>
+                <span>Show my class year, major, and study style to members of groups I join</span>
+            </label>
+            <small class="field-hint">Your name always shows. Your email is never shown.</small>
         </section>
 
         <section class="form-section">
