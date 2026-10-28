@@ -38,8 +38,7 @@
 <main class="create-main profile-main">
 
     <section class="profile-header">
-        <div class="profile-avatar" aria-hidden="true" style="background: {{ avatar_hex }};">{{ initials }}</div>
-
+        {% if avatar_url %}<img class="profile-avatar" src="{{ avatar_url }}" alt="Your profile photo">{% else %}<div class="profile-avatar">{{ initials }}</div>{% endif %}
         <div class="profile-headline">
             <h1>{{ values.display_name or "Your profile" }}</h1>
             <p>
@@ -70,7 +69,7 @@
         </div>
     {% endif %}
 
-    <form method="POST" class="create-form">
+    <form method="POST" class="create-form" enctype="multipart/form-data>
 
         <section class="form-section">
             <h2>About you</h2>
@@ -101,6 +100,14 @@
                     {% endfor %}
                 </div>
             </fieldset>
+
+            <div class="avatar-upload">
+                {% if avatar_url %}<img src="{{ avatar_url }}" alt="">{% endif %}
+                <label><span>Profile photo (JPG, PNG or WebP, up to 3 MB)</span>
+                    <input type="file" name="avatar" accept="image/jpeg,image/png,image/webp">
+                </label>
+            </div>
+            {% if avatar_url %}<label class="privacy-toggle"><input type="checkbox" name="remove_photo"> Remove my photo</label>{% endif %}
 
             <label class="checkbox privacy-toggle" for="show_in_groups">
                 <input type="checkbox" id="show_in_groups" name="show_in_groups"
@@ -246,5 +253,8 @@
 
 </main>
 
+<link rel="stylesheet" href="{{ url_for('static', filename='studymore_help.css') }}">
+<script>window.STUDYMORE_CAMPUS = "University of Texas at Arlington, Arlington, TX";</script>
+<script src="{{ url_for('static', filename='studymore_help.js') }}"></script>
 </body>
 </html>
