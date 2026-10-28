@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Semesters | StudyMore</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='semesters.css') }}">
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+</head>
+<body>
+{% include "_nav.html" %}
+
+<main class="sem-main">
+    <div class="page-heading">
+        <h1>My semesters</h1>
+        <p>Choose the semester you are working in, or add a new one.</p>
+    </div>
+
+    {% if error %}<div class="message error" role="alert">{{ error }}</div>{% endif %}
+
+    {% if semesters %}
+    <div class="sem-list">
+        {% for s in semesters %}
+        <article class="sem-card{% if s.is_active %} sem-active{% endif %}">
+            <div>
+                <h2>{{ s.name }}{% if s.is_active %}<span class="badge">Active</span>{% endif %}</h2>
+                <p class="sem-dates">{{ s.start_date }} to {{ s.end_date }} &middot; {{ s.item_count }} deadline{{ '' if s.item_count == 1 else 's' }}</p>
+            </div>
+            <div class="sem-actions">
+                <a class="primary" href="{{ url_for('semesters.semester_view', semester_id=s.id) }}">Open</a>
+                {% if not s.is_active %}
+                <form method="POST" action="{{ url_for('semesters.activate_semester', semester_id=s.id) }}"><button type="submit" class="secondary">Make active</button></form>
+                {% endif %}
+                <form method="POST" action="{{ url_for('semesters.delete_semester', semester_id=s.id) }}" onsubmit="return confirm('Delete {{ s.name }} and its deadlines?');"><button type="submit" class="danger-button">Delete</button></form>
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state"><p>You have no semesters yet. Add your first one below.</p></div>
+    {% endif %}
+
+    <section class="form-section sem-form">
+        <h2>Add a semester</h2>
+        <form method="POST" class="sem-grid">
+            <label><span>Term</span>
+                <select name="term" required>
+                    <option value="">Choose a term</option>
+                    {% for t in terms %}<option value="{{ t }}" {% if form.get('term') == t %}selected{% endif %}>{{ t }}</option>{% endfor %}
+                </select>
+            </label>
+            <label><span>Year</span><input type="text" name="year" inputmode="numeric" maxlength="4" value="{{ form.get('year') or this_year }}" required></label>
+            <label><span>First day of classes</span><input type="date" name="start_date" value="{{ form.get('start_date', '') }}" required></label>
+            <label><span>Last day (end of finals)</span><input type="date" name="end_date" value="{{ form.get('end_date', '') }}" required></label>
+            <button type="submit" class="primary">Add semester</button>
+        </form>
+    </section>
+</main>
+
+<link rel="stylesheet" href="{{ url_for('static', filename='studymore_help.css') }}">
+<script>window.STUDYMORE_CAMPUS = "University of Texas at Arlington, Arlington, TX";</script>
+<script src="{{ url_for('static', filename='studymore_help.js') }}"></script>
+</body>
+</html>
