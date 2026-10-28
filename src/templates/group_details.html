@@ -7,6 +7,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='zine.css') }}">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='group_directions.css') }}">
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
     </head>
 
@@ -203,8 +206,30 @@
 
 </article>
 
+{% if group["location"] and group["meeting_type"] in ("In-Person", "Hybrid") %}
+<section class="dir-card" id="directions" data-place="{{ group['location'] }}" data-campus="University of Texas at Arlington, Arlington, TX">
+    <div>
+        <span class="dir-kicker">Getting there</span>
+        <h2>Walk to <span class="hl">{{ group["location"] }}</span></h2>
+    </div>
+    <div class="dir-controls">
+        <button type="button" class="primary" id="dir-locate">From my location</button>
+        <span class="dir-or">or</span>
+        <input type="text" id="dir-start" placeholder="Start from a building or address">
+        <button type="button" class="secondary" id="dir-go">Get route</button>
+    </div>
+    <p class="dir-status" id="dir-status" role="status"></p>
+    <div class="dir-map" id="dir-map"></div>
+    <div class="dir-stats" id="dir-summary" hidden></div>
+    <ol class="dir-steps" id="dir-steps"></ol>
+    <a class="dir-google" id="dir-google" target="_blank" rel="noopener noreferrer">Open in Google Maps</a>
+</section>
+{% endif %}
+
 </main>
 
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="{{ url_for('static', filename='group_directions.js') }}"></script>
 <link rel="stylesheet" href="{{ url_for('static', filename='studymore_help.css') }}">
 <script>window.STUDYMORE_CAMPUS = "University of Texas at Arlington, Arlington, TX";</script>
 <script src="{{ url_for('static', filename='studymore_help.js') }}"></script>

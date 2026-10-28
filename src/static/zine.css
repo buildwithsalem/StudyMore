@@ -1,0 +1,132 @@
+@import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;600&display=swap");
+
+/* StudyMore "campus zine" theme. Load AFTER style.css (and semesters.css).
+   Flat riso colors, ink outlines, hard offset shadows. Light mode only for now. */
+:root{
+  color-scheme:light;
+  --bg:#e6e9fb; --card:#ffffff; --ink:#12123a; --muted:#55587f;
+  --blue:#2d46ff; --orange:#ff6a1f; --lime:#c9f13b; --pink:#ffd0e6; --tint:#d9defc;
+  --display:"Bricolage Grotesque","Arial Black",system-ui,sans-serif;
+  --body:"Instrument Sans",system-ui,sans-serif;
+  --mono:"DM Mono",ui-monospace,Menlo,monospace;
+  /* map the older theme variables onto the new palette */
+  --line:var(--ink); --accent:var(--blue); --accent-soft:var(--lime); --accent-dark:var(--blue);
+  --grad-btn:var(--blue); --open:#1c7a3a; --full:var(--orange); --closed:var(--muted); --danger:#c2410c;
+  --shadow:5px 5px 0 var(--ink); --shadow-hover:7px 7px 0 var(--ink);
+}
+body{font-family:var(--body);font-size:16px;line-height:1.45;color:var(--ink);background:var(--bg);background-attachment:scroll}
+h1,h2,h3{font-family:var(--display);line-height:1;letter-spacing:-.01em}
+h1{font-weight:800}
+main{animation:none}
+a{color:var(--blue)}
+
+/* top bar */
+.topbar{background:var(--card);backdrop-filter:none;-webkit-backdrop-filter:none;border-bottom:2px solid var(--ink);box-shadow:none}
+.brand{font-family:var(--display);font-weight:800;font-size:1.35rem;background:none;color:var(--ink);-webkit-text-fill-color:currentColor;display:flex;align-items:center}
+.brand::before{content:"";width:22px;height:22px;border-radius:50%;background:var(--blue);border:2px solid var(--ink);box-shadow:10px 0 0 -2px var(--orange);margin-right:18px}
+.topbar nav a{font-family:var(--mono);font-size:.74rem;letter-spacing:.06em;text-transform:uppercase;color:var(--ink);border-radius:8px}
+.topbar nav a:hover,.topbar nav a.active{background:var(--lime);color:var(--ink);transform:none}
+.topbar nav a[href$="/logout"]:hover{background:var(--orange);color:var(--ink)}
+.nav-badge{background:var(--orange);color:var(--ink);border:2px solid var(--ink)}
+.menu-toggle span{background:var(--ink)}
+.page-heading h1{background:none;color:var(--ink);-webkit-text-fill-color:currentColor;font-size:clamp(2rem,6vw,3rem)}
+.back-link{color:var(--ink);font-family:var(--mono);font-size:.74rem;text-transform:uppercase;letter-spacing:.06em}
+
+/* cards */
+.group-card,.my-group-card,.match-card,.stat-card,.action-card,.meeting-item,.request-card,.details-card,
+.form-section,.availability-card,.auth-card,.request-summary,.heatmap-summary,.search-form,.empty-state,
+.session-series-card,.schedule-form-card,.schedule-empty-state,.sem-card,.sem-month,.cal,.member-card{
+  background:var(--card);border:2px solid var(--ink);border-radius:16px;box-shadow:var(--shadow)}
+.group-card:hover,.my-group-card:hover,.match-card:hover,.stat-card:hover,.action-card:hover,.meeting-item:hover,.request-card:hover{
+  transform:translate(-2px,-2px);box-shadow:var(--shadow-hover);border-color:var(--ink)}
+.group-card.unavailable{background:var(--card);opacity:.85}
+.empty-state,.schedule-empty-state{border-style:dashed;background:var(--card)}
+.member-card{box-shadow:3px 3px 0 var(--ink);border-radius:12px}
+.dashboard-welcome{background:var(--lime);border:2px solid var(--ink);box-shadow:var(--shadow)}
+.profile-header{background:var(--blue);border:2px solid var(--ink);box-shadow:var(--shadow);border-radius:16px}
+.stat-number{background:none;color:var(--blue);-webkit-text-fill-color:currentColor;font-family:var(--display);font-weight:800}
+.action-card-title{color:var(--ink);font-family:var(--display)}
+.auth-page{background:var(--bg)}
+.details-header,.details-description,.details-actions,.my-group-header,.my-group-actions{border-color:var(--ink)}
+
+/* buttons */
+.primary,.secondary,.danger-button,.schedule-form-card button[type="submit"]{
+  font-family:var(--body);font-weight:600;border:2px solid var(--ink);border-radius:12px;box-shadow:4px 4px 0 var(--ink);
+  filter:none;transition:transform .12s,box-shadow .12s,background .12s}
+.primary,.schedule-form-card button[type="submit"]{background:var(--blue);color:#fff}
+.secondary,.danger-button{background:var(--card);color:var(--ink)}
+.primary:hover,.secondary:hover,.danger-button:hover,.schedule-form-card button[type="submit"]:hover{
+  transform:translate(-2px,-2px);box-shadow:6px 6px 0 var(--ink);filter:none}
+.primary:hover,.schedule-form-card button[type="submit"]:hover{background:var(--blue)}
+.secondary:hover{background:var(--lime);border-color:var(--ink)}
+.danger-button:hover{background:var(--orange);color:var(--ink);border-color:var(--ink)}
+.primary:active,.secondary:active,.danger-button:active{transform:translate(3px,3px);box-shadow:1px 1px 0 var(--ink)}
+.primary[disabled],.primary[disabled]:hover{background:var(--card);color:var(--muted);box-shadow:none;transform:none}
+
+/* forms: slim focus ring */
+input:not([type="checkbox"]):not([type="radio"]),select,textarea{
+  font-family:var(--body);border:2px solid var(--ink);border-radius:10px;background:var(--card);color:var(--ink)}
+input:not([type="checkbox"]):not([type="radio"]):hover,select:hover,textarea:hover{border-color:var(--ink)}
+input:not([type="checkbox"]):not([type="radio"]):focus,select:focus,textarea:focus{
+  outline:2px solid var(--orange);outline-offset:2px;border-color:var(--ink);box-shadow:none}
+:focus-visible{outline:2px solid var(--orange);outline-offset:2px}
+label>span,.filters legend,.info-label,.details dt{font-family:var(--mono);font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+input[type="checkbox"],input[type="radio"]{accent-color:var(--blue)}
+.required{color:var(--orange)}
+.filters{border:2px solid var(--ink)}
+
+/* tags, status, badges */
+.status,.badge,.member-badge,.invite-state,.session-repeat-badge{
+  font-family:var(--mono);font-size:.7rem;letter-spacing:.05em;text-transform:uppercase;font-weight:500;
+  border:2px solid var(--ink);border-radius:6px;padding:2px 8px;box-shadow:none;color:var(--ink)}
+.status-open,.badge,.member-badge,.invite-accepted{background:var(--lime)}
+.status-full,.invite-expired{background:var(--orange)}
+.status-completed,.invite-state{background:var(--card)}
+.status-cancelled,.invite-declined,.invite-cancelled{background:var(--pink)}
+.joined,.membership-note{color:var(--ink);font-weight:600}
+.blocked,.edit-hint{color:var(--orange)}
+.course,.match-type{color:var(--blue);font-family:var(--mono);font-size:.74rem;text-transform:uppercase;letter-spacing:.06em}
+.match-score{background:var(--blue);color:#fff;border:2px solid var(--ink);box-shadow:3px 3px 0 var(--ink);font-family:var(--display)}
+.match-reason,.chip span{background:var(--card);border:2px solid var(--ink);color:var(--ink)}
+.match-reason:hover,.chip:hover span{background:var(--lime);transform:none;box-shadow:none;border-color:var(--ink)}
+.chip input:checked+span{background:var(--orange);color:var(--ink);box-shadow:none;border-color:var(--ink)}
+
+/* messages */
+.message{border:2px solid var(--ink);border-left-width:2px;border-radius:12px;color:var(--ink)}
+.notice{background:var(--tint)}.error{background:var(--pink)}.success{background:var(--lime)}
+
+/* availability and heatmap */
+.availability-slot span{background:transparent;border:2px solid var(--ink);box-shadow:none}
+.availability-slot:hover span{background:var(--tint);border-color:var(--ink);transform:none}
+.availability-slot input:checked+span{background:var(--blue);border-color:var(--ink);box-shadow:none}
+.legend-box{background:var(--blue);border:2px solid var(--ink)}
+.heat-none{background:var(--card);color:var(--muted)}
+.heat-medium{background:var(--tint);color:var(--ink)}
+.heat-high{background:var(--blue);color:#fff;box-shadow:none}
+.heatmap-cell:hover{transform:none;box-shadow:none}
+.heatmap-table{background:var(--card);border:2px solid var(--ink)}
+
+/* semesters and calendar */
+.sem-card.sem-active{box-shadow:5px 5px 0 var(--blue)}
+.sem-tabs{border:2px solid var(--ink);box-shadow:3px 3px 0 var(--ink)}
+.sem-tabs a{font-family:var(--mono);font-size:.74rem;text-transform:uppercase;letter-spacing:.06em;color:var(--ink)}
+.sem-tabs a.on{background:var(--lime);color:var(--ink)}
+.sem-progress{border:2px solid var(--ink);background:var(--card);height:12px}
+.sem-progress div{background:var(--blue)}
+.cal-day{background:var(--card);border:1px solid var(--ink);border-radius:8px}
+.cal-day.today{border:2px solid var(--orange);box-shadow:none}
+.cal-dow{font-family:var(--mono);text-transform:uppercase;color:var(--muted)}
+.ev{border:2px solid var(--ink);color:var(--ink)}
+.ev-item{background:var(--orange)}.ev-session{background:var(--tint)}.ev-meeting{background:var(--lime)}
+
+/* help button, tutorial, small dialogs */
+.help-fab{background:var(--orange);color:var(--ink);border:2px solid var(--ink);box-shadow:3px 3px 0 var(--ink);font-family:var(--display);font-weight:800}
+.help-fab:hover{filter:none;transform:translate(-1px,-1px);box-shadow:4px 4px 0 var(--ink)}
+.help-menu{border:2px solid var(--ink);border-radius:14px;box-shadow:5px 5px 0 var(--ink)}
+.help-menu button:hover{background:var(--lime);color:var(--ink)}
+.sm-dialog{border:2px solid var(--ink);box-shadow:8px 8px 0 var(--ink)}
+.sm-dots i.on{background:var(--blue)}
+.sm-highlight{box-shadow:0 0 0 3px var(--orange)!important}
+.swatch-dot{border:2px solid var(--ink);box-shadow:none}
+.swatch input:checked+.swatch-dot{box-shadow:0 0 0 3px var(--orange)}
+img.profile-avatar,.profile-avatar,.member-avatar{border:2px solid var(--ink)}

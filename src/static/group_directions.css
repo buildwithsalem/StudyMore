@@ -1,0 +1,29 @@
+/* In-page walking directions card (campus zine look). Needs zine.css variables. */
+.dir-card{max-width:760px;margin:24px auto 0;background:var(--card);border:2px solid var(--ink);border-radius:18px;
+  box-shadow:6px 6px 0 var(--ink);padding:22px;display:flex;flex-direction:column;gap:16px}
+.dir-card .dir-kicker{font-family:var(--mono);font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.dir-card h2{font-family:var(--display);font-weight:800;font-size:clamp(1.5rem,4vw,2rem);line-height:1;margin:4px 0 0}
+.dir-card h2 .hl{background:linear-gradient(transparent 58%,var(--lime) 58% 92%,transparent 92%);padding:0 .06em}
+.dir-controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.dir-controls input[type="text"]{flex:1;min-width:200px;width:auto}
+.dir-or{font-family:var(--mono);font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.dir-status{min-height:1.2em;margin:0;font-size:.9rem;color:var(--muted)}
+.dir-status.err{color:var(--ink);background:var(--pink);border:2px solid var(--ink);border-radius:10px;padding:8px 12px}
+.dir-map{position:relative;z-index:0;isolation:isolate;height:320px;border:2px solid var(--ink);border-radius:14px;overflow:hidden;box-shadow:3px 3px 0 var(--ink)}
+.dir-stats{display:flex;gap:10px;flex-wrap:wrap}
+.dir-stats[hidden]{display:none}
+.dir-tag{display:inline-block;font-family:var(--mono);font-size:.78rem;text-transform:uppercase;letter-spacing:.05em;border:2px solid var(--ink);border-radius:6px;padding:4px 10px;background:var(--lime);color:var(--ink)}
+.dir-tag.alt{background:var(--card)}
+.dir-steps{margin:0;padding:0;list-style:none;counter-reset:step;display:flex;flex-direction:column;gap:8px}
+.dir-steps:empty{display:none}
+.dir-steps li{counter-increment:step;display:flex;align-items:center;gap:12px;padding:10px 12px;border:2px solid var(--ink);border-radius:12px;background:var(--card)}
+.dir-steps li::before{content:counter(step);flex:none;width:28px;height:28px;border-radius:50%;border:2px solid var(--ink);background:var(--blue);color:#fff;display:grid;place-items:center;font-family:var(--display);font-weight:800;font-size:.85rem}
+.dir-steps li:last-child::before{background:var(--orange);color:var(--ink)}
+.dir-steps .txt{flex:1}
+.dir-steps .dist{flex:none;font-family:var(--mono);font-size:.72rem;text-transform:uppercase;color:var(--muted)}
+.dir-google{align-self:flex-start;font-family:var(--mono);font-size:.74rem;letter-spacing:.06em;text-transform:uppercase;color:var(--ink);border:2px solid var(--ink);border-radius:8px;padding:6px 10px;text-decoration:none;background:var(--card)}
+.dir-google:hover{background:var(--lime)}
+.dir-pin span{display:block;width:22px;height:22px;border-radius:50%;background:var(--orange);border:2px solid var(--ink);box-shadow:3px 3px 0 var(--ink)}
+.dir-pin.start span{background:var(--blue)}
+.leaflet-tooltip.dir-tip{font-family:var(--mono);font-size:.7rem;text-transform:uppercase;border:2px solid var(--ink);border-radius:6px;box-shadow:2px 2px 0 var(--ink);color:var(--ink)}
+@media (max-width:600px){.dir-card{padding:16px}.dir-map{height:260px}.dir-controls .primary,.dir-controls .secondary{width:100%}}

@@ -84,7 +84,6 @@ def ensure_table(conn):
         )
         """
     )
-    # Databases made before these columns existed get them added here.
     existing = {row[1] for row in conn.execute("PRAGMA table_info(user_profiles)")}
     if "avatar_color" not in existing:
         conn.execute("ALTER TABLE user_profiles ADD COLUMN avatar_color TEXT DEFAULT 'purple'")
