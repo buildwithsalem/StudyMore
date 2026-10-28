@@ -96,6 +96,7 @@
                 <div class="info-item">
                     <span class="info-label">Location</span>
                     <span class="info-value">{{ group["location"] }}</span>
+                    <button type="button" class="secondary" data-place="{{ group['location'] }}" onclick="StudyMoreDirections(this.dataset.place)">Get directions</button>
                 </div>
             {% endif %}
 
@@ -121,7 +122,12 @@
             <ul class="member-list">
                 {% for m in members %}
                 <li class="member-card">
+                    {% if m.photo_url %}
+                    <img class="member-avatar" src="{{ m.photo_url }}" alt="">
+                    {% else %}
                     <span class="member-avatar" aria-hidden="true" style="background: {{ m.color }};">{{ m.initials }}</span>
+                    {% endif %}
+
                     <div class="member-info">
                         <div class="member-name">{{ m.name }}{% if m.is_creator %}<span class="member-badge">Creator</span>{% endif %}</div>
                         {% if m.headline or m.study_style %}
@@ -198,5 +204,8 @@
 
 </main>
 
+<link rel="stylesheet" href="{{ url_for('static', filename='studymore_help.css') }}">
+<script>window.STUDYMORE_CAMPUS = "University of Texas at Arlington, Arlington, TX";</script>
+<script src="{{ url_for('static', filename='studymore_help.js') }}"></script>
 </body>
 </html>

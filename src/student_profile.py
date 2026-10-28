@@ -15,6 +15,11 @@ from flask import (
 
 from db import get_db_connection
 
+from avatar_upload import (
+    ensure_avatar_column, save_avatar, delete_avatar_file,
+    set_avatar_path, avatar_url_for,
+)
+
 profile_bp = Blueprint("profile", __name__, template_folder="templates")
 
 DEFAULT_DATABASE = "study_more.db"
@@ -41,6 +46,7 @@ AVATAR_COLORS = {
     "slate": "#4b5563",
 }
 DEFAULT_AVATAR = "purple"
+
 
 MAX_NAME = 60
 MAX_BIO = 300
@@ -74,6 +80,7 @@ def ensure_table(conn):
             interests TEXT,
             avatar_color TEXT DEFAULT 'purple',
             show_in_groups INTEGER DEFAULT 1,
+            ensure_avatar_column(conn),
             FOREIGN KEY (user_id) REFERENCES users(id)
         )
         """
@@ -122,6 +129,7 @@ def empty_values(name=""):
         "need_help": "",
         "interests": "",
         "avatar_color": DEFAULT_AVATAR,
+        "avatar_path": "",
         "show_in_groups": True,
     }
 
@@ -288,7 +296,7 @@ def get_member_cards(conn, group_id, creator_id):
     rows = conn.execute(
         """
         SELECT u.id, u.name, p.class_year, p.major, p.study_style,
-               p.avatar_color, p.show_in_groups
+               p.avatar_color, p.avatar_path, p.show_in_groups
         FROM group_memberships gm
         JOIN users u ON u.id = gm.user_id
         LEFT JOIN user_profiles p ON p.user_id = u.id
@@ -310,6 +318,7 @@ def get_member_cards(conn, group_id, creator_id):
                 "name": row["name"],
                 "initials": initials_of(row["name"]),
                 "color": AVATAR_COLORS.get(row["avatar_color"], AVATAR_COLORS[DEFAULT_AVATAR]),
+                "photo_url": avatar_url_for(row["avatar_path"]),
                 "headline": headline,
                 "study_style": (row["study_style"] or "") if visible else "",
                 "is_creator": row["id"] == creator_id,
@@ -337,14 +346,32 @@ def profile():
         errors = []
         saved = False
         status_code = 200
-        values = load_profile(conn, user)
+                values = load_profile(conn, user)
+        current_avatar = values["avatar_path"]
 
         if request.method == "POST":
             values, errors = clean_form(request.form)
+            values["avatar_path"] = current_avatar
+
+            new_avatar = None
+            upload = request.files.get("avatar")
+            if not errors and upload and upload.filename:
+                new_avatar, photo_error = save_avatar(upload, user_id)
+                if photo_error:
+                    errors.append(photo_error)
+
             if errors:
                 status_code = 400
             else:
                 save_profile(conn, user_id, values)
+                if new_avatar:
+                    set_avatar_path(conn, user_id, new_avatar)
+                    delete_avatar_file(current_avatar)
+                    values["avatar_path"] = new_avatar
+                elif request.form.get("remove_photo") == "on" and current_avatar:
+                    set_avatar_path(conn, user_id, "")
+                    delete_avatar_file(current_avatar)
+                    values["avatar_path"] = ""
                 session["user_name"] = values["display_name"]
                 saved = True
 
@@ -383,6 +410,7 @@ def profile():
             study_goals=STUDY_GOALS,
             max_bio=MAX_BIO,
             avatar_colors=AVATAR_COLORS,
+            avatar_url=avatar_url_for(values["avatar_path"]),
             avatar_hex=AVATAR_COLORS.get(values["avatar_color"], AVATAR_COLORS[DEFAULT_AVATAR]),
         ),
         status_code,
