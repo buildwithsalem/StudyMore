@@ -80,18 +80,17 @@ def ensure_table(conn):
             interests TEXT,
             avatar_color TEXT DEFAULT 'purple',
             show_in_groups INTEGER DEFAULT 1,
-            ensure_avatar_column(conn),
             FOREIGN KEY (user_id) REFERENCES users(id)
         )
         """
     )
-    # Databases made before these two columns existed get them added here.
+    # Databases made before these columns existed get them added here.
     existing = {row[1] for row in conn.execute("PRAGMA table_info(user_profiles)")}
     if "avatar_color" not in existing:
         conn.execute("ALTER TABLE user_profiles ADD COLUMN avatar_color TEXT DEFAULT 'purple'")
     if "show_in_groups" not in existing:
         conn.execute("ALTER TABLE user_profiles ADD COLUMN show_in_groups INTEGER DEFAULT 1")
-
+    ensure_avatar_column(conn)
 
 def split_list(text):
     """'a, b ,, a' -> ['a', 'b'] (blanks dropped, repeats dropped, order kept)."""
@@ -346,7 +345,7 @@ def profile():
         errors = []
         saved = False
         status_code = 200
-                values = load_profile(conn, user)
+        values = load_profile(conn, user)
         current_avatar = values["avatar_path"]
 
         if request.method == "POST":
@@ -410,8 +409,8 @@ def profile():
             study_goals=STUDY_GOALS,
             max_bio=MAX_BIO,
             avatar_colors=AVATAR_COLORS,
-            avatar_url=avatar_url_for(values["avatar_path"]),
             avatar_hex=AVATAR_COLORS.get(values["avatar_color"], AVATAR_COLORS[DEFAULT_AVATAR]),
+            avatar_url=avatar_url_for(values["avatar_path"]),
         ),
         status_code,
     )
