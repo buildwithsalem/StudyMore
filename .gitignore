@@ -3,3 +3,4 @@ app copy.py
 __pycache__/
 *.pyc
 *.db
+src/static/uploads/

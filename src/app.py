@@ -24,6 +24,11 @@ app.add_template_filter(safe_meeting_url, "safe_meeting_url")
 
 import os
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", os.urandom(24))
+app.config["MAX_CONTENT_LENGTH"] = 6 * 1024 * 1024
+
+@app.errorhandler(413)
+def file_too_large(error):
+    return "That file is too large. Profile photos must be 3 MB or smaller.", 413
 app.register_blueprint(search_bp)
 from student_profile import profile_bp, ensure_table as ensure_profile_table, get_member_cards
 app.register_blueprint(profile_bp)
