@@ -1,4 +1,4 @@
-/* Walking directions shown inside the group page (Leaflet + OpenStreetMap).
+/* Walking directions shown inside the group page (Leaflet + CARTO/Photon).
    No API key needed. Needs Leaflet loaded first. */
 (function () {
   var root = document.getElementById("directions");
@@ -13,14 +13,13 @@
   var startInput = document.getElementById("dir-start");
 
   var map = L.map("dir-map", { scrollWheelZoom: false }).setView([32.7299, -97.1125], 16);
-  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 19,
-    attribution: "&copy; OpenStreetMap contributors"
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+    maxZoom: 20,
+    subdomains: "abcd",
+    attribution: "&copy; OpenStreetMap contributors &copy; CARTO"
   }).addTo(map);
 
   var routeLayer = null, destMarker = null, dest = null;
-  var BLUE = (getComputedStyle(document.documentElement).getPropertyValue("--blue") || "").trim() || "#2d46ff";
-  function pin(cls) { return L.divIcon({ className: "dir-pin " + cls, html: "<span></span>", iconSize: [26, 26], iconAnchor: [13, 13] }); }
 
   function say(text, isError) {
     statusEl.textContent = text || "";
@@ -28,11 +27,14 @@
   }
 
   function geocode(query) {
-    var url = "https://nominatim.openstreetmap.org/search?format=json&limit=1&q=" + encodeURIComponent(query);
-    return fetch(url, { headers: { "Accept": "application/json" } })
+    var url = "https://photon.komoot.io/api/?limit=1&q=" + encodeURIComponent(query);
+    return fetch(url)
       .then(function (r) { return r.json(); })
-      .then(function (rows) {
-        return rows && rows.length ? { lat: parseFloat(rows[0].lat), lon: parseFloat(rows[0].lon) } : null;
+      .then(function (data) {
+        var f = data && data.features && data.features[0];
+        if (!f) return null;
+        var coords = f.geometry.coordinates; // [lon, lat]
+        return { lat: coords[1], lon: coords[0] };
       });
   }
 
@@ -69,21 +71,18 @@
       if (!data.routes || !data.routes.length) { say("No walking route found. Try the Google Maps link below.", true); return; }
       var route = data.routes[0];
       if (routeLayer) map.removeLayer(routeLayer);
-      routeLayer = L.geoJSON(route.geometry, { style: { color: BLUE, weight: 5 } }).addTo(map);
-      L.marker([from.lat, from.lon], { icon: pin("start") }).addTo(routeLayer);
+      routeLayer = L.geoJSON(route.geometry, { style: { color: "#2d46ff", weight: 5 } }).addTo(map);
+      L.circleMarker([from.lat, from.lon], { radius: 7, color: "#fff", weight: 2, fillColor: "#2d46ff", fillOpacity: 1 }).addTo(routeLayer);
       map.fitBounds(routeLayer.getBounds(), { padding: [30, 30] });
 
       var minutes = Math.max(1, Math.round(route.duration / 60));
-      summaryEl.innerHTML = "";
-      [[minutes + " min walk", ""], [feet(route.distance), " alt"]].forEach(function (t) {
-        var tag = document.createElement("span"); tag.className = "dir-tag" + t[1]; tag.textContent = t[0]; summaryEl.appendChild(tag);
-      });
+      summaryEl.textContent = minutes + " min walk \u00B7 " + feet(route.distance);
       summaryEl.hidden = false;
 
       stepsEl.innerHTML = "";
       route.legs[0].steps.forEach(function (s) {
         var li = document.createElement("li");
-        var t = document.createElement("span"); t.className = "txt"; t.textContent = words(s);
+        var t = document.createElement("span"); t.textContent = words(s);
         var d = document.createElement("span"); d.className = "dist";
         d.textContent = s.distance > 0 ? feet(s.distance) : "";
         li.appendChild(t); li.appendChild(d); stepsEl.appendChild(li);
@@ -92,11 +91,10 @@
     }).catch(function () { say("Could not load directions right now. Try the Google Maps link below.", true); });
   }
 
-  // Pin the destination first so the map is useful even before a route is asked for.
   geocode(place + (campus ? ", " + campus : "")).then(function (pt) {
     if (!pt) { say("We couldn't pin this exact spot on the map. Use the Google Maps link below.", true); return; }
     dest = pt;
-    destMarker = L.marker([pt.lat, pt.lon], { icon: pin("") }).addTo(map).bindTooltip(place, { permanent: true, direction: "top", offset: [0, -14], className: "dir-tip" });
+    destMarker = L.marker([pt.lat, pt.lon]).addTo(map).bindPopup(place);
     map.setView([pt.lat, pt.lon], 17);
   }).catch(function () { say("The map service is not responding. Use the Google Maps link below.", true); });
 

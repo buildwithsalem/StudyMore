@@ -11,8 +11,8 @@
   --mono:"DM Mono",ui-monospace,Menlo,monospace;
   /* map the older theme variables onto the new palette */
   --line:var(--ink); --accent:var(--blue); --accent-soft:var(--lime); --accent-dark:var(--blue);
-  --grad-btn:var(--blue); --open:#1c7a3a; --full:var(--orange); --closed:var(--muted); --danger:#c2410c;
-  --shadow:5px 5px 0 var(--ink); --shadow-hover:7px 7px 0 var(--ink);
+  --grad-btn:var(--blue); --open:#1c7a3a; --full:var(--orange); 
+  --closed:var(--muted); --danger:#e5484d;
 }
 body{font-family:var(--body);font-size:16px;line-height:1.45;color:var(--ink);background:var(--bg);background-attachment:scroll}
 h1,h2,h3{font-family:var(--display);line-height:1;letter-spacing:-.01em}
@@ -63,6 +63,15 @@ a{color:var(--blue)}
 .primary:active,.secondary:active,.danger-button:active{transform:translate(3px,3px);box-shadow:1px 1px 0 var(--ink)}
 .primary[disabled],.primary[disabled]:hover{background:var(--card);color:var(--muted);box-shadow:none;transform:none}
 
+/* danger buttons stay visibly red, not just on hover */
+.danger-button{background:#fde6ec;color:var(--danger);border-color:var(--danger)}
+.danger-button:hover{background:var(--danger);color:#fff;border-color:var(--ink)}
+
+/* tighten the gap between a note like "you joined this group" and the button under it */
+.membership-note{margin-bottom:6px}
+.creator-status-control{gap:8px}
+.details-actions > div{display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+
 /* forms: slim focus ring */
 input:not([type="checkbox"]):not([type="radio"]),select,textarea{
   font-family:var(--body);border:2px solid var(--ink);border-radius:10px;background:var(--card);color:var(--ink)}
@@ -106,6 +115,11 @@ input[type="checkbox"],input[type="radio"]{accent-color:var(--blue)}
 .heatmap-cell:hover{transform:none;box-shadow:none}
 .heatmap-table{background:var(--card);border:2px solid var(--ink)}
 
+.availability-slot span{position:relative;border-radius:8px;transition:transform .1s ease}
+.availability-slot:hover span{transform:scale(1.04)}
+.availability-slot input:checked+span::after{content:"\2713";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700}
+.availability-count{margin:10px 0 0;color:var(--muted)}
+
 /* semesters and calendar */
 .sem-card.sem-active{box-shadow:5px 5px 0 var(--blue)}
 .sem-tabs{border:2px solid var(--ink);box-shadow:3px 3px 0 var(--ink)}
@@ -130,3 +144,12 @@ input[type="checkbox"],input[type="radio"]{accent-color:var(--blue)}
 .swatch-dot{border:2px solid var(--ink);box-shadow:none}
 .swatch input:checked+.swatch-dot{box-shadow:0 0 0 3px var(--orange)}
 img.profile-avatar,.profile-avatar,.member-avatar{border:2px solid var(--ink)}
+
+/* danger buttons stay visibly red, not just on hover */
+.danger-button{background:#fde6ec;color:var(--danger);border-color:var(--danger)}
+.danger-button:hover{background:var(--danger);color:#fff;border-color:var(--ink)}
+
+/* tighten the gap between a note like "you joined this group" and the button under it */
+.membership-note{margin-bottom:6px}
+.creator-status-control{gap:8px}
+.details-actions > div{display:flex;flex-direction:column;gap:6px;align-items:flex-start}
