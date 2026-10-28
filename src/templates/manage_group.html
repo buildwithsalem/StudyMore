@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Manage Group | StudyMore</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+    </head>
+
+<body>
+
+<header class="topbar">
+    <span class="brand">StudyMore</span>
+
+    
+    <button type="button" class="menu-toggle" aria-label="Toggle menu" aria-controls="site-nav" aria-expanded="false" onclick="var n=document.getElementById('site-nav');n.classList.toggle('open');this.classList.toggle('open');this.setAttribute('aria-expanded', n.classList.contains('open'));">
+        <span></span><span></span><span></span>
+    </button>
+
+    <nav id="site-nav">
+        <a href="{{ url_for('dashboard.dashboard') }}">Dashboard</a>
+        <a href="{{ url_for('search.search') }}">Search Groups</a>
+        <a href="{{ url_for('create_group') }}">Create Group</a>
+        <a href="{{ url_for('my_groups') }}">My Groups</a>
+        <a href="{{ url_for('invitations.inbox') }}"{% if request.endpoint == 'invitations.inbox' %} class="active"{% endif %}>Invitations{% if pending_invite_count %}<span class="nav-badge">{{ pending_invite_count }}</span>{% endif %}</a>
+        <a href="{{ url_for('study_request') }}">Find My Match</a>
+        <a href="{{ url_for('availability') }}">Availability</a>
+        <a href="{{ url_for('profile.profile') }}">Profile</a>
+        <a href="{{ url_for('logout') }}">Log Out</a>
+    </nav>
+</header>
+<div class="crumbs"><a href="#" class="back-link" onclick="history.back();return false;">&larr; Back</a></div>
+
+
+<main class="create-main">
+
+    <div class="page-heading">
+        <h1>Members &amp; Invitations</h1>
+        <p>{{ group["group_name"] }} &middot; {{ group["course_code"] }} &middot;
+           <a class="back-link" href="{{ url_for('group_details', group_id=group['id']) }}">Back to group</a></p>
+    </div>
+
+    {% if error %}<div class="message error" role="alert">{{ error }}</div>{% endif %}
+    {% if info %}<div class="message success" role="status">{{ info }}</div>{% endif %}
+
+    <section class="form-section">
+        <h2>Invite a student</h2>
+        {% if display_status == "Open" %}
+            <form method="POST" action="{{ url_for('invitations.invite', group_id=group['id']) }}" class="invite-form">
+                <label for="invite_email">
+                    <span>Their UTA email</span>
+                    <input type="email" id="invite_email" name="email" placeholder="name@mavs.uta.edu" required>
+                </label>
+                <button type="submit" class="primary">Send Invitation</button>
+            </form>
+            <small class="field-hint">They need a StudyMore account. Invitations expire after {{ invite_lifetime_days }} days.</small>
+        {% else %}
+            <p class="membership-note">This group is {{ display_status|lower }}, so it can't take new invitations right now.</p>
+        {% endif %}
+    </section>
+
+    <section class="form-section">
+        <h2>Pending invitations ({{ pending|length }})</h2>
+        {% if pending %}
+            <ul class="member-list">
+                {% for inv in pending %}
+                <li class="member-card">
+                    <div class="member-info">
+                        <div class="member-name">{{ inv.invitee_name }}</div>
+                        <div class="member-meta">Invited {{ inv.created_at[:10] }}</div>
+                    </div>
+                    <form method="POST" action="{{ url_for('invitations.cancel', invitation_id=inv.id) }}" class="member-action">
+                        <button type="submit" class="secondary danger-text">Cancel</button>
+                    </form>
+                </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p class="empty-note">No pending invitations.</p>
+        {% endif %}
+    </section>
+
+    <section class="form-section">
+        <h2>Current members ({{ member_count }} of {{ group["max_members"] }})</h2>
+        {% if members %}
+            <ul class="member-list">
+                {% for m in members %}
+                <li class="member-card">
+                    <span class="member-avatar" aria-hidden="true" style="background: {{ m.color }};">{{ m.initials }}</span>
+                    <div class="member-info">
+                        <div class="member-name">{{ m.name }}{% if m.is_creator %}<span class="member-badge">Creator</span>{% endif %}</div>
+                        {% if m.headline or m.study_style %}
+                            <div class="member-meta">{{ m.headline }}{% if m.headline and m.study_style %} &middot; {% endif %}{{ m.study_style }}</div>
+                        {% endif %}
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p class="empty-note">No members yet.</p>
+        {% endif %}
+    </section>
+
+    {% if history %}
+    <section class="form-section">
+        <h2>Past invitations</h2>
+        <ul class="member-list">
+            {% for inv in history %}
+            <li class="member-card">
+                <div class="member-info">
+                    <div class="member-name">{{ inv.invitee_name }}</div>
+                    <div class="member-meta">{{ inv.created_at[:10] }}</div>
+                </div>
+                <span class="invite-state invite-{{ inv.effective_status }}">{{ inv.effective_status|title }}</span>
+            </li>
+            {% endfor %}
+        </ul>
+    </section>
+    {% endif %}
+
+</main>
+
+</body>
+</html>

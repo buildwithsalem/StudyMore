@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Verify Your Email | StudyMore</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+    </head>
+
+<body class="auth-page">
+
+<header class="topbar">
+    <span class="brand">StudyMore</span>
+</header>
+
+<main class="auth-main">
+
+    <div class="auth-card">
+
+        <div class="auth-heading">
+            <h1>Check your email</h1>
+            <p>We sent a {{ code_length }}-digit code to <strong>{{ masked_email }}</strong>. It expires in 10 minutes.</p>
+        </div>
+
+        {% if error %}<div class="message error" role="alert">{{ error }}</div>{% endif %}
+        {% if info %}<div class="message success" role="status">{{ info }}</div>{% endif %}
+
+        <form method="POST" action="{{ url_for('verification.verify') }}" class="auth-form">
+            <label>
+                <span>Verification code <span class="required">*</span></span>
+                <input
+                    name="code"
+                    type="text"
+                    class="code-input"
+                    inputmode="numeric"
+                    autocomplete="one-time-code"
+                    pattern="[0-9 ]*"
+                    maxlength="{{ code_length + 1 }}"
+                    placeholder="123456"
+                    autofocus
+                    required>
+            </label>
+
+            <button type="submit" class="primary auth-button">Verify and continue</button>
+        </form>
+
+        <form method="POST" action="{{ url_for('verification.resend') }}" class="auth-form resend-form">
+            <button type="submit" class="secondary auth-button">Send me a new code</button>
+        </form>
+
+        <p class="auth-switch">
+            Wrong account? <a href="{{ url_for('register') }}">Start over</a>
+        </p>
+
+    </div>
+
+</main>
+
+</body>
+</html>
