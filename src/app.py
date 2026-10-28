@@ -42,6 +42,8 @@ app.register_blueprint(verification_bp)
 from invitations import invitations_bp, ensure_invitation_schema
 app.register_blueprint(invitations_bp)
 
+from semesters import semesters_bp
+app.register_blueprint(semesters_bp)
 
 def init_db(database=None):
     """Create any missing tables in `database` (default: app.config["DATABASE"])."""

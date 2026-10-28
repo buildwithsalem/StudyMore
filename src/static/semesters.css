@@ -1,0 +1,44 @@
+/* Semesters, monthly calendar, semester overview */
+.sem-main{max-width:1000px}
+.sem-list{display:flex;flex-direction:column;gap:14px;margin-bottom:24px}
+.sem-card{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 20px}
+.sem-card h2{margin:0 0 4px;font-size:18px}
+.sem-card.sem-active{border-color:var(--accent)}
+.sem-dates{margin:0;color:var(--muted);font-size:13px}
+.sem-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.sem-actions form{margin:0}
+.sem-form{margin-top:24px}
+.sem-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;align-items:end}
+.sem-grid input,.sem-grid select{width:100%;padding:10px 11px;font:inherit;font-size:14px;border:1px solid var(--line);border-radius:10px;background:#fff}
+.sem-progress{height:8px;background:var(--line);border-radius:999px;overflow:hidden;margin-bottom:10px}
+.sem-progress div{height:100%;background:var(--grad-btn,#6c4ef5)}
+.sem-summary{font-size:14px;color:var(--muted);margin:0 0 16px}
+.sem-tabs{display:inline-flex;gap:4px;padding:4px;background:#fff;border:1px solid var(--line);border-radius:12px;margin-bottom:16px}
+.sem-tabs a{padding:8px 16px;border-radius:9px;font-size:14px;text-decoration:none;color:var(--muted)}
+.sem-tabs a.on{background:var(--accent-soft,#efeaff);color:var(--accent);font-weight:600}
+.cal{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:24px}
+.cal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.cal-head h2{margin:0;font-size:18px}
+.cal-scroll{overflow-x:auto}
+.cal-grid{display:grid;grid-template-columns:repeat(7,minmax(104px,1fr));gap:4px;min-width:740px}
+.cal-dow{text-align:center;font-size:12px;font-weight:600;color:var(--muted);padding:6px 0}
+.cal-day{min-height:92px;padding:6px;background:#faf9ff;border:1px solid var(--line);border-radius:8px;display:flex;flex-direction:column;gap:3px;overflow:hidden}
+.cal-day.other{opacity:.45}
+.cal-day.today{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.cal-num{font-size:12px;font-weight:600;color:var(--muted)}
+.ev{display:block;padding:2px 6px;border-radius:6px;font-size:11px;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ev-item{background:#ffe9ee;color:#c92f56}
+.ev-session{background:#efeaff;color:#4b34c9}
+.ev-meeting{background:#e6f9f2;color:#0b7a5d}
+.cal-key{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 0}
+.cal-key .ev{display:inline-block}
+.sem-months{display:flex;flex-direction:column;gap:14px;margin-bottom:24px}
+.sem-month{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+.sem-month-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px}
+.sem-month-head h2{margin:0;font-size:17px}
+.sem-events{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.sem-events li{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:14px}
+.sem-date{min-width:56px;font-weight:600}
+.sem-sub{color:var(--muted);font-size:12px}
+.sem-items{margin-top:24px}
+.sem-items h2{font-size:18px}

@@ -13,7 +13,7 @@
     { t: "Welcome to StudyMore", d: "Find study groups for your classes, match with people who share your schedule, and plan sessions together.", sel: null },
     { t: "Find a group", d: "Search by course, then filter by status or meeting type. Join an open group in one click.", sel: '.topbar nav a[href*="search"], .topbar nav a:first-child' },
     { t: "Set your availability", d: "Tell us when you are free. Smart matches and group heatmaps use this to find the best meeting time.", sel: '.topbar nav a[href*="availab"]' },
-    { t: "Plan your semester", d: "Pick the semester you are working on and add or upload your syllabus to plan study sessions.", sel: '.topbar nav a[href*="schedule"]' },
+    { t: "Plan your semester", d: "Pick the semester you are working on and add or upload your syllabus to plan study sessions.", sel: '.topbar nav a[href*="semesters"]' },
     { t: "Need help later?", d: "The ? button in the corner replays this tour and gets you directions around campus.", sel: ".help-fab" }
   ];
 

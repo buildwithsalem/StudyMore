@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ semester.name }} | StudyMore</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='semesters.css') }}">
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+</head>
+<body>
+{% include "_nav.html" %}
+<div class="crumbs"><a href="{{ url_for('semesters.semesters') }}" class="back-link">&larr; All semesters</a></div>
+
+<main class="sem-main">
+    <div class="page-heading">
+        <h1>{{ semester.name }}</h1>
+        <p>{{ semester.start_date }} to {{ semester.end_date }} &middot; {{ days_left }} day{{ '' if days_left == 1 else 's' }} left</p>
+    </div>
+
+    <div class="sem-progress" role="progressbar" aria-valuemin="0" aria-valuemax="{{ total_days }}" aria-valuenow="{{ days_done }}">
+        <div style="width: {{ (days_done * 100 / total_days)|round|int }}%"></div>
+    </div>
+
+    <p class="sem-summary">
+        {{ upcoming_count }} upcoming deadline{{ '' if upcoming_count == 1 else 's' }}{% if next_item %}. Next: <strong>{{ next_item.title }}</strong> on {{ next_item.due_date }}{% endif %}
+    </p>
+
+    {% if error %}<div class="message error" role="alert">{{ error }}</div>{% endif %}
+
+    <div class="sem-tabs">
+        <a href="{{ url_for('semesters.semester_view', semester_id=semester.id) }}" class="{{ 'on' if view == 'month' }}">Monthly</a>
+        <a href="{{ url_for('semesters.semester_view', semester_id=semester.id, view='semester') }}" class="{{ 'on' if view == 'semester' }}">Whole semester</a>
+    </div>
+
+    {% if view == 'month' %}
+    <section class="cal">
+        <div class="cal-head">
+            <a class="secondary" href="{{ url_for('semesters.semester_view', semester_id=semester.id, month=prev_month) }}" aria-label="Previous month">&larr;</a>
+            <h2>{{ month_label }}</h2>
+            <a class="secondary" href="{{ url_for('semesters.semester_view', semester_id=semester.id, month=next_month) }}" aria-label="Next month">&rarr;</a>
+        </div>
+        <div class="cal-scroll">
+        <div class="cal-grid">
+            {% for d in ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'] %}<div class="cal-dow">{{ d }}</div>{% endfor %}
+            {% for week in weeks %}{% for day in week %}
+            <div class="cal-day{% if day.month != current_month %} other{% endif %}{% if day == today %} today{% endif %}">
+                <span class="cal-num">{{ day.day }}</span>
+                {% for e in events.get(day, []) %}
+                <span class="ev ev-{{ e.kind }}" title="{{ e.label }}{% if e.sub %} ({{ e.sub }}){% endif %}{% if e.when %} {{ e.when }}{% endif %}">{{ e.label }}</span>
+                {% endfor %}
+            </div>
+            {% endfor %}{% endfor %}
+        </div>
+        </div>
+        <p class="cal-key"><span class="ev ev-item">Deadline</span> <span class="ev ev-session">Study session</span> <span class="ev ev-meeting">Group meeting</span></p>
+    </section>
+    {% else %}
+    <section class="sem-months">
+        {% for m in months %}
+        <article class="sem-month">
+            <div class="sem-month-head">
+                <h2>{{ m.label }}</h2>
+                <a href="{{ url_for('semesters.semester_view', semester_id=semester.id, month=m.key) }}" class="section-link">{{ m.count }} item{{ '' if m.count == 1 else 's' }} &middot; open month</a>
+            </div>
+            {% if m.days %}
+            <ul class="sem-events">
+                {% for day, evs in m.days %}{% for e in evs %}
+                <li><span class="sem-date">{{ day.strftime('%b %d') }}</span><span class="ev ev-{{ e.kind }}">{{ e.label }}</span><span class="sem-sub">{{ e.sub }}{% if e.when %} &middot; {{ e.when }}{% endif %}</span></li>
+                {% endfor %}{% endfor %}
+            </ul>
+            {% else %}<p class="empty-note">Nothing scheduled yet.</p>{% endif %}
+        </article>
+        {% endfor %}
+    </section>
+    {% endif %}
+
+    <section class="form-section sem-form">
+        <h2>Add a deadline</h2>
+        <form method="POST" action="{{ url_for('semesters.add_item', semester_id=semester.id) }}" class="sem-grid">
+            <label><span>Title</span><input type="text" name="title" maxlength="120" placeholder="Midterm 1" required></label>
+            <label><span>Type</span>
+                <select name="item_type" required>{% for t in item_types %}<option>{{ t }}</option>{% endfor %}</select>
+            </label>
+            <label><span>Course <span class="optional">(optional)</span></span>
+                <input type="text" name="course_code" list="course-list" maxlength="20" placeholder="CSE 3311">
+                <datalist id="course-list">{% for c in courses %}<option value="{{ c }}">{% endfor %}</datalist>
+            </label>
+            <label><span>Due date</span><input type="date" name="due_date" min="{{ semester.start_date }}" max="{{ semester.end_date }}" required></label>
+            <button type="submit" class="primary">Add deadline</button>
+        </form>
+    </section>
+
+    {% if items %}
+    <section class="sem-items">
+        <h2>All deadlines</h2>
+        <ul class="member-list">
+            {% for i in items %}
+            <li class="member-card">
+                <div class="member-info">
+                    <div class="member-name">{{ i.title }}</div>
+                    <div class="member-meta">{{ i.due_date }} &middot; {{ i.item_type }}{% if i.course_code %} &middot; {{ i.course_code }}{% endif %}</div>
+                </div>
+                <form method="POST" action="{{ url_for('semesters.delete_item', semester_id=semester.id, item_id=i.id) }}"><button type="submit" class="danger-button">Remove</button></form>
+            </li>
+            {% endfor %}
+        </ul>
+    </section>
+    {% endif %}
+</main>
+
+<link rel="stylesheet" href="{{ url_for('static', filename='studymore_help.css') }}">
+<script>window.STUDYMORE_CAMPUS = "University of Texas at Arlington, Arlington, TX";</script>
+<script src="{{ url_for('static', filename='studymore_help.js') }}"></script>
+</body>
+</html>
