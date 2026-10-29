@@ -24,10 +24,9 @@
   var startInput = document.getElementById("dir-start");
 
   var map = L.map("dir-map", { scrollWheelZoom: false }).setView([32.7299, -97.1125], 16);
-  L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 20,
-    subdomains: "abcd",
-    attribution: "&copy; OpenStreetMap contributors &copy; CARTO"
+    attribution: "&copy; <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a> contributors"
   }).addTo(map);
 
   var routeLayer = null, destMarker = null, dest = null;
