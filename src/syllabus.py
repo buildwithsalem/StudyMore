@@ -25,6 +25,7 @@ from syllabus_parse import (
     extract_text,
     parse_syllabus,
 )
+from syllabus_bridge import parse_pdf_bytes
 
 syllabus_bp = Blueprint("syllabus", __name__, template_folder="templates")
 
@@ -63,9 +64,13 @@ def syllabus_upload(semester_id):
 
     upload = request.files.get("syllabus")
     pasted = (request.form.get("pasted_text") or "")[:MAX_PASTE]
+    pdf_bytes = None
     try:
         if upload is not None and upload.filename:
-            text = extract_text(upload.filename, upload.read())
+            data = upload.read()
+            text = extract_text(upload.filename, data)
+            if upload.filename.lower().endswith(".pdf"):
+                pdf_bytes = data
         elif pasted.strip():
             text = pasted
         else:
@@ -74,7 +79,14 @@ def syllabus_upload(semester_id):
         return _render_upload(semester, courses, str(exc), 400)
 
     start, end = parse_date(semester["start_date"]), parse_date(semester["end_date"])
-    rows = parse_syllabus(text, start, end)
+
+    # PDFs go through the new reader first; if it finds nothing (or fails),
+    # fall back to the old text reader so nothing that worked before breaks.
+    rows = []
+    if pdf_bytes:
+        rows, _warnings = parse_pdf_bytes(pdf_bytes, start, end)
+    if not rows:
+        rows = parse_syllabus(text, start, end)
 
     # Course: what the student typed, else the code found in the syllabus
     # (matched to their profile courses when possible).
