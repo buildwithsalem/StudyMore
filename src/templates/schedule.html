@@ -12,8 +12,10 @@
     {% include "_nav.html" %}
 
     <main class="container">
-        <h1>Study Schedule</h1>
-        <p>Plan and keep track of your upcoming study sessions.</p>
+        <div class="page-heading">
+            <h1><span class="hl">Study Schedule</span></h1>
+            <p>Plan and keep track of your upcoming study sessions.</p>
+        </div>
 
         <section class="dashboard-section">
     <div class="schedule-form-card">
@@ -23,16 +25,15 @@
         </p>
 
     {% if message %}
-        <p>{{ message }}</p>
+        <div class="message success" role="status">{{ message }}</div>
     {% endif %}
 
     {% if error %}
-        <p>{{ error }}</p>
+        <div class="message error" role="alert">{{ error }}</div>
     {% endif %}
 
     {% if groups %}
-        <form method="POST" action="{{ url_for('schedule') }}">
-
+        <form method="POST" action="{{ url_for('schedule') }}" class="sch-form">
             <div>
                 <label for="group_id">Study Group *</label>
                 <select id="group_id" name="group_id" required>
@@ -129,7 +130,7 @@
     </div>
 
     {% if session_groups %}
-        <div class="session-card-list">
+        <div class="session-card-list" data-layout-list>
 
             {% for group in session_groups %}
                 {% set study_session = group["session"] %}

@@ -1306,8 +1306,7 @@ def schedule():
                 "occurrences": []
             }
 
-        grouped_sessions[session_id]
-    ["occurrences"].append(occurrence)
+        grouped_sessions[session_id]["occurrences"].append(occurrence)
 
     session_groups = list(grouped_sessions.values())
     
