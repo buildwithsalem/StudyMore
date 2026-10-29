@@ -1,10 +1,3 @@
-"""Profile photo helpers: validate, store and delete avatar images.
-
-Photos are saved under static/uploads/avatars/. The file name is generated
-here (user id + random token); the name the student uploaded is never used.
-Only JPG, PNG and WebP are accepted, checked by file signature, not by name.
-SVG is deliberately not allowed (it can carry scripts).
-"""
 
 import os
 import secrets

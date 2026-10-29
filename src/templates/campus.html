@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Campus Directions | StudyMore</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='zine.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='group_directions.css') }}">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    {% include "_ui_head.html" %}
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='theme_motion.css') }}">
+    <script src="{{ url_for('static', filename='theme_motion.js') }}" defer></script>
+</head>
+<body>
+{% include "_nav.html" %}
+
+<main class="campus-main">
+    <div class="page-heading">
+        <h1><span class="hl">Directions</span></h1>
+        <p>Walking routes to a building on campus, or to any place nearby.</p>
+    </div>
+
+    <div class="campus-tabs" role="group" aria-label="Where to">
+        <button type="button" class="on" data-mode="campus">On campus</button>
+        <button type="button" data-mode="off">Off campus</button>
+    </div>
+
+    <div id="campus-buildings" class="campus-pick">
+        {% for b in buildings %}<button type="button" data-place="{{ b }}">{{ b }}</button>{% endfor %}
+    </div>
+    <form id="campus-off" class="campus-find" hidden onsubmit="return false">
+        <input type="text" id="campus-q" placeholder="Coffee shop, apartment, bus stop, any address" aria-label="Place or address">
+        <button type="submit" class="primary" id="campus-search">Find it</button>
+    </form>
+
+    <section class="dir-card" id="directions" data-place="" data-campus="{{ campus }}">
+        <div>
+            <span class="dir-kicker">Getting there</span>
+            <h2 id="dir-title">Pick a place above</h2>
+        </div>
+        <div class="dir-controls">
+            <button type="button" class="primary" id="dir-locate">From my location</button>
+            <span class="dir-or">or</span>
+            <input type="text" id="dir-start" placeholder="Start from a building or address">
+            <button type="button" class="secondary" id="dir-go">Get route</button>
+        </div>
+        <p class="dir-status" id="dir-status" role="status"></p>
+        <div class="dir-map" id="dir-map"></div>
+        <div class="dir-stats" id="dir-summary" hidden></div>
+        <ol class="dir-steps" id="dir-steps"></ol>
+        <a class="dir-google" id="dir-google" target="_blank" rel="noopener noreferrer">Open in Google Maps</a>
+    </section>
+</main>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="{{ url_for('static', filename='group_directions.js') }}"></script>
+<script>
+(function () {
+  var tabs = document.querySelectorAll(".campus-tabs button"), pick = document.getElementById("campus-buildings"),
+      off = document.getElementById("campus-off"), title = document.getElementById("dir-title");
+  tabs.forEach(function (t) {
+    t.onclick = function () {
+      tabs.forEach(function (x) { x.classList.toggle("on", x === t); });
+      var campus = t.dataset.mode === "campus";
+      pick.hidden = !campus; off.hidden = campus;
+    };
+  });
+  pick.onclick = function (e) {
+    var b = e.target.closest("button"); if (!b) return;
+    pick.querySelectorAll("button").forEach(function (x) { x.classList.toggle("on", x === b); });
+    title.textContent = "Walk to " + b.dataset.place;
+    window.StudyMoreSetPlace(b.dataset.place, true);
+  };
+  off.onsubmit = function (e) {
+    e.preventDefault();
+    var q = document.getElementById("campus-q").value.trim(); if (!q) return;
+    title.textContent = "Walk to " + q;
+    window.StudyMoreSetPlace(q, false);
+  };
+})();
+</script>
+{% include "_ui_foot.html" %}
+</body>
+</html>

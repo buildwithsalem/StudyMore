@@ -1,0 +1,58 @@
+/* StudyMore dark mode motion, plus a dark look for the map. Works with html[data-theme="dark"]. */
+
+/* smooth cross-fade while the theme flips */
+html.sm-theming *, html.sm-theming *::before, html.sm-theming *::after {
+  transition: background-color 0.45s ease, color 0.45s ease, border-color 0.45s ease,
+              box-shadow 0.45s ease, fill 0.45s ease, stroke 0.45s ease !important;
+}
+
+/* ripple that grows from the button you clicked */
+.sm-wipe {
+  position: fixed;
+  z-index: 9998;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  pointer-events: none;
+  transform: translate(-50%, -50%) scale(0);
+  animation: sm-wipe 0.65s cubic-bezier(0.2, 0.7, 0.2, 1) forwards;
+}
+@keyframes sm-wipe {
+  0% { transform: translate(-50%, -50%) scale(0); opacity: 0.95; }
+  75% { opacity: 0.85; }
+  100% { transform: translate(-50%, -50%) scale(var(--s, 200)); opacity: 0; }
+}
+
+/* dark mode: a slow, soft glow behind the page */
+html[data-theme="dark"] body::before {
+  content: "";
+  position: fixed;
+  inset: -20%;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(40% 35% at 18% 14%, rgba(123, 140, 255, 0.30), transparent 70%),
+    radial-gradient(34% 30% at 86% 24%, rgba(255, 138, 77, 0.20), transparent 70%),
+    radial-gradient(42% 36% at 56% 96%, rgba(212, 245, 90, 0.14), transparent 70%);
+  animation: sm-drift 24s ease-in-out infinite alternate;
+}
+@keyframes sm-drift { to { transform: translate3d(3%, 2%, 0) scale(1.07); } }
+
+/* dark mode: cards glow instead of casting a flat shadow when you hover them */
+html[data-theme="dark"] .group-card:hover, html[data-theme="dark"] .my-group-card:hover,
+html[data-theme="dark"] .match-card:hover, html[data-theme="dark"] .action-card:hover,
+html[data-theme="dark"] .meeting-item:hover, html[data-theme="dark"] .stat-card:hover {
+  box-shadow: 0 0 0 2px var(--lime, #d4f55a), 0 14px 40px rgba(123, 140, 255, 0.38);
+}
+html[data-theme="dark"] .primary:hover { box-shadow: 0 0 0 2px var(--lime, #d4f55a), 0 10px 28px rgba(123, 140, 255, 0.5); }
+
+/* dark mode: keep the road map readable (only the map tiles change, not pins or routes) */
+html[data-theme="dark"] .leaflet-container { background: #0e0f2b; }
+html[data-theme="dark"] .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.92) saturate(0.75); }
+html[data-theme="dark"] .leaflet-control-attribution { color: #a3a6d6; background: rgba(14, 15, 43, 0.85); }
+html[data-theme="dark"] .leaflet-control-attribution a { color: #d4f55a; }
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-theme="dark"] body::before { animation: none; }
+  .sm-wipe { display: none; }
+}

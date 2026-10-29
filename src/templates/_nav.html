@@ -1,18 +1,45 @@
+{% set ep = request.endpoint or '' %}
+{% set groups_active = ep in ['search.search', 'create_group', 'my_groups', 'group_details', 'edit_group'] or ep.startswith('invitations.') %}
+{% set plan_active = ep in ['study_request', 'study_matches', 'availability', 'availability_heatmap', 'schedule', 'ui.campus'] or ep.startswith('semesters.') or ep.startswith('syllabus.') %}
 <header class="topbar">
-    <span class="brand">StudyMore</span>
+    <a class="brand" href="{{ url_for('dashboard.dashboard') }}">StudyMore</a>
     <button type="button" class="menu-toggle" aria-label="Toggle menu" aria-controls="site-nav" aria-expanded="false" onclick="var n=document.getElementById('site-nav');n.classList.toggle('open');this.classList.toggle('open');this.setAttribute('aria-expanded', n.classList.contains('open'));">
         <span></span><span></span><span></span>
     </button>
     <nav id="site-nav">
-        <a href="{{ url_for('dashboard.dashboard') }}">Dashboard</a>
-        <a href="{{ url_for('search.search') }}">Search Groups</a>
-        <a href="{{ url_for('create_group') }}">Create Group</a>
-        <a href="{{ url_for('my_groups') }}">My Groups</a>
-        <a href="{{ url_for('invitations.inbox') }}">Invitations{% if pending_invite_count %}<span class="nav-badge">{{ pending_invite_count }}</span>{% endif %}</a>
-        <a href="{{ url_for('study_request') }}">Find My Match</a>
-        <a href="{{ url_for('availability') }}">Availability</a>
-        <a href="{{ url_for('semesters.semesters') }}"{% if request.endpoint and request.endpoint.startswith('semesters.') %} class="active"{% endif %}>Semesters</a>
-        <a href="{{ url_for('profile.profile') }}">Profile</a>
+        <a href="{{ url_for('dashboard.dashboard') }}"{% if ep.startswith('dashboard.') %} class="active"{% endif %}>Dashboard</a>
+
+        <details class="nav-group{% if groups_active %} active{% endif %}">
+            <summary>Groups{% if pending_invite_count %}<span class="nav-badge">{{ pending_invite_count }}</span>{% endif %}</summary>
+            <div class="nav-menu">
+                <a href="{{ url_for('search.search') }}">Search Groups</a>
+                <a href="{{ url_for('create_group') }}">Create Group</a>
+                <a href="{{ url_for('my_groups') }}">My Groups</a>
+                <a href="{{ url_for('invitations.inbox') }}">Invitations{% if pending_invite_count %}<span class="nav-badge">{{ pending_invite_count }}</span>{% endif %}</a>
+            </div>
+        </details>
+
+        <details class="nav-group{% if plan_active %} active{% endif %}">
+            <summary>Plan</summary>
+            <div class="nav-menu">
+                <a href="{{ url_for('study_request') }}">Find My Match</a>
+                <a href="{{ url_for('availability') }}">Availability</a>
+                <a href="{{ url_for('schedule') }}">Schedule</a>
+                <a href="{{ url_for('semesters.semesters') }}">Semesters</a>
+                <a href="{{ url_for('ui.campus') }}">Campus Directions</a>
+            </div>
+        </details>
+
+        <a href="{{ url_for('profile.profile') }}"{% if ep.startswith('profile.') %} class="active"{% endif %}>Profile</a>
         <a href="{{ url_for('logout') }}">Log Out</a>
     </nav>
 </header>
+<script>
+document.addEventListener("click", function (e) {
+    document.querySelectorAll("#site-nav details[open]").forEach(function (d) { if (!d.contains(e.target)) d.removeAttribute("open"); });
+});
+document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") document.querySelectorAll("#site-nav details[open]").forEach(function (d) { d.removeAttribute("open"); });
+});
+</script>
+<script src="{{ url_for('static', filename='layout_toggle.js') }}" defer></script>

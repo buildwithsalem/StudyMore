@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Upload syllabus | StudyMore</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='semesters.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='syllabus.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static', filename='zine.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='semesters_zine.css') }}">
+    {% include "_ui_head.html" %}
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='theme_motion.css') }}">
+    <script src="{{ url_for('static', filename='theme_motion.js') }}" defer></script>
+</head>
+<body>
+{% include "_nav.html" %}
+
+<main class="sem-main">
+    <div class="page-heading">
+        <h1><span class="hl">Upload your syllabus</span></h1>
+        <p>For {{ semester.name }}. We find the exams, quizzes and due dates, and you check them before anything is added.</p>
+    </div>
+
+    {% if error %}<div class="message error" role="alert">{{ error }}</div>{% endif %}
+
+    <section class="form-section sem-form">
+        <form method="POST" enctype="multipart/form-data" class="syl-form">
+            <label><span>Syllabus file (PDF, Word .docx or .txt, up to 5 MB)</span>
+                <input type="file" name="syllabus" accept=".pdf,.docx,.txt">
+            </label>
+            <label><span>Or paste the schedule text</span>
+                <textarea name="pasted_text" rows="8" placeholder="Sep 14 Quiz 1&#10;Sep 28 Midterm Exam&#10;Dec 9 Final Exam">{{ form.get('pasted_text', '') }}</textarea>
+            </label>
+            <label><span>Course (optional, we look for it in the file)</span>
+                <input type="text" name="course_code" list="syl-courses" maxlength="20" placeholder="e.g. CSE 3310" value="{{ form.get('course_code', '') }}">
+                <datalist id="syl-courses">{% for c in courses %}<option value="{{ c }}">{% endfor %}</datalist>
+            </label>
+            <p class="syl-note">Your file is read once and not saved. Scanned (picture-only) syllabi cannot be read, so paste the text for those.</p>
+            <div class="syl-actions">
+                <button type="submit" class="primary">Read my syllabus</button>
+                <a class="secondary" href="{{ url_for('semesters.semester_view', semester_id=semester.id) }}">Back to semester</a>
+            </div>
+        </form>
+    </section>
+</main>
+
+{% include "_ui_foot.html" %}
+</body>
+</html>

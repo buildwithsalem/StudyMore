@@ -7,32 +7,18 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='zine.css') }}">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='group_directions.css') }}">
+    {% include "_ui_head.html" %}
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
-    </head>
+        <link rel="stylesheet" href="{{ url_for('static', filename='theme_motion.css') }}">
+    <script src="{{ url_for('static', filename='theme_motion.js') }}" defer></script>
+</head>
 
 <body>
 
-<header class="topbar">
-    <span class="brand">StudyMore</span>
-
-
-    <button type="button" class="menu-toggle" aria-label="Toggle menu" aria-controls="site-nav" aria-expanded="false" onclick="var n=document.getElementById('site-nav');n.classList.toggle('open');this.classList.toggle('open');this.setAttribute('aria-expanded', n.classList.contains('open'));">
-        <span></span><span></span><span></span>
-    </button>
-
-    <nav id="site-nav">
-        <a href="{{ url_for('dashboard.dashboard') }}">Dashboard</a>
-        <a href="{{ url_for('search.search') }}">Search Groups</a>
-        <a href="{{ url_for('create_group') }}">Create Group</a>
-        <a href="{{ url_for('my_groups') }}">My Groups</a>
-        <a href="{{ url_for('invitations.inbox') }}"{% if request.endpoint == 'invitations.inbox' %} class="active"{% endif %}>Invitations{% if pending_invite_count %}<span class="nav-badge">{{ pending_invite_count }}</span>{% endif %}</a>
-        <a href="{{ url_for('study_request') }}">Find My Match</a>
-        <a href="{{ url_for('availability') }}">Availability</a>
-        <a href="{{ url_for('semesters.semesters') }}">Semesters</a>
-        <a href="{{ url_for('profile.profile') }}">Profile</a>
-        <a href="{{ url_for('logout') }}">Log Out</a>
-    </nav>
-</header>
+{% include "_nav.html" %}
 <div class="crumbs"><a href="#" class="back-link" onclick="history.back();return false;">&larr; Back</a></div>
 
 
@@ -203,10 +189,30 @@
 
 </article>
 
+{% if group["location"] and group["meeting_type"] in ("In-Person", "Hybrid") %}
+<section class="dir-card" id="directions" data-place="{{ group['location'] }}" data-campus="University of Texas at Arlington, Arlington, TX">
+    <div>
+        <span class="dir-kicker">Getting there</span>
+        <h2>Walk to <span class="hl">{{ group["location"] }}</span></h2>
+    </div>
+    <div class="dir-controls">
+        <button type="button" class="primary" id="dir-locate">From my location</button>
+        <span class="dir-or">or</span>
+        <input type="text" id="dir-start" placeholder="Start from a building or address">
+        <button type="button" class="secondary" id="dir-go">Get route</button>
+    </div>
+    <p class="dir-status" id="dir-status" role="status"></p>
+    <div class="dir-map" id="dir-map"></div>
+    <div class="dir-stats" id="dir-summary" hidden></div>
+    <ol class="dir-steps" id="dir-steps"></ol>
+    <a class="dir-google" id="dir-google" target="_blank" rel="noopener noreferrer">Open in Google Maps</a>
+</section>
+{% endif %}
+
 </main>
 
-<link rel="stylesheet" href="{{ url_for('static', filename='studymore_help.css') }}">
-<script>window.STUDYMORE_CAMPUS = "University of Texas at Arlington, Arlington, TX";</script>
-<script src="{{ url_for('static', filename='studymore_help.js') }}"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="{{ url_for('static', filename='group_directions.js') }}"></script>
+{% include "_ui_foot.html" %}
 </body>
 </html>

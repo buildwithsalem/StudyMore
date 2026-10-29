@@ -8,29 +8,47 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='semesters.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='zine.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='semesters_zine.css') }}">
+    {% include "_ui_head.html" %}
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='theme_motion.css') }}">
+    <script src="{{ url_for('static', filename='theme_motion.js') }}" defer></script>
 </head>
 <body>
 {% include "_nav.html" %}
 
 <main class="sem-main">
-    <div class="page-heading">
-        <h1>My semesters</h1>
-        <p>Choose the semester you are working in, or add a new one.</p>
+    <div class="sec-head">
+        <div>
+            <h1><span class="hl">My semesters</span></h1>
+            <p>Choose the semester you are working in, or add a new one.</p>
+        </div>
+        <div class="seg" role="group" aria-label="Layout">
+            <a href="{{ url_for('semesters.semesters', layout='cards') }}"{% if layout == 'cards' %} aria-current="true"{% endif %}>Cards</a>
+            <a href="{{ url_for('semesters.semesters', layout='list') }}"{% if layout == 'list' %} aria-current="true"{% endif %}>List</a>
+        </div>
     </div>
 
     {% if error %}<div class="message error" role="alert">{{ error }}</div>{% endif %}
 
     {% if semesters %}
-    <div class="sem-list">
+    <div class="sem-board sem-{{ layout }}">
         {% for s in semesters %}
         <article class="sem-card{% if s.is_active %} sem-active{% endif %}">
-            <div>
-                <h2>{{ s.name }}{% if s.is_active %}<span class="badge">Active</span>{% endif %}</h2>
-                <p class="sem-dates">{{ s.start_date }} to {{ s.end_date }} &middot; {{ s.item_count }} deadline{{ '' if s.item_count == 1 else 's' }}</p>
+            <div class="sem-main-info">
+                <div>
+                    {% if s.is_active %}<span class="tag t-open">Active</span>{% endif %}
+                    {% if s.is_upcoming %}<span class="tag t-soon">Upcoming</span>{% elif s.is_over %}<span class="tag t-done">Finished</span>{% endif %}
+                </div>
+                <h2>{{ s.name }}</h2>
+                <p class="sem-dates">{{ s.start_date }} to {{ s.end_date }}</p>
             </div>
+            <div class="sem-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ s.progress }}"><div style="width: {{ s.progress }}%"></div></div>
+            <p class="sem-meta">{{ s.item_count }} deadline{{ '' if s.item_count == 1 else 's' }} &middot; {{ s.days_left }} day{{ '' if s.days_left == 1 else 's' }} left</p>
             <div class="sem-actions">
                 <a class="primary" href="{{ url_for('semesters.semester_view', semester_id=s.id) }}">Open</a>
+                <a class="secondary" href="{{ url_for('syllabus.syllabus_upload', semester_id=s.id) }}">Upload syllabus</a>
                 {% if not s.is_active %}
                 <form method="POST" action="{{ url_for('semesters.activate_semester', semester_id=s.id) }}"><button type="submit" class="secondary">Make active</button></form>
                 {% endif %}
@@ -60,8 +78,6 @@
     </section>
 </main>
 
-<link rel="stylesheet" href="{{ url_for('static', filename='studymore_help.css') }}">
-<script>window.STUDYMORE_CAMPUS = "University of Texas at Arlington, Arlington, TX";</script>
-<script src="{{ url_for('static', filename='studymore_help.js') }}"></script>
+{% include "_ui_foot.html" %}
 </body>
 </html>

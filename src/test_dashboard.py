@@ -134,7 +134,7 @@ class DashboardContentTests(DashboardTestCase):
         """Dashboard displays greeting personalized with the user's name."""
         self.log_in(user_id=1, user_name="Demo Student")
         body = self.client.get("/dashboard").data.decode()
-        self.assertIn("Welcome back, Demo Student!", body)
+        self.assertIn('<span class="hl">Demo Student</span>', body)
 
     def test_dashboard_shows_joined_groups(self):
         """Dashboard lists the groups the logged-in user has joined."""

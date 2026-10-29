@@ -1,0 +1,261 @@
+@import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;600&display=swap");
+
+/* StudyMore "campus zine" theme. Load AFTER style.css (and semesters.css).
+   Flat riso colors, ink outlines, hard offset shadows. Light mode only for now. */
+:root{
+  color-scheme:light;
+  --bg:#e6e9fb; --card:#ffffff; --ink:#12123a; --muted:#55587f;
+  --blue:#2d46ff; --orange:#ff6a1f; --lime:#c9f13b; --pink:#ffd0e6; --tint:#d9defc;
+  --display:"Bricolage Grotesque","Arial Black",system-ui,sans-serif;
+  --body:"Instrument Sans",system-ui,sans-serif;
+  --mono:"DM Mono",ui-monospace,Menlo,monospace;
+  /* map the older theme variables onto the new palette */
+  --line:var(--ink); --accent:var(--blue); --accent-soft:var(--lime); --accent-dark:var(--blue);
+  --grad-btn:var(--blue); --open:#1c7a3a; --full:var(--orange); 
+  --closed:var(--muted); --danger:#e5484d;
+}
+body{font-family:var(--body);font-size:16px;line-height:1.45;color:var(--ink);background:var(--bg);background-attachment:scroll}
+h1,h2,h3{font-family:var(--display);line-height:1;letter-spacing:-.01em}
+h1{font-weight:800}
+main{animation:none}
+a{color:var(--blue)}
+
+.hl{background:linear-gradient(transparent 58%,var(--lime) 58% 92%,transparent 92%);padding:0 .06em}
+
+/* top bar */
+.topbar{background:var(--card);backdrop-filter:none;-webkit-backdrop-filter:none;border-bottom:2px solid var(--ink);box-shadow:none}
+.brand{font-family:var(--display);font-weight:800;font-size:1.35rem;background:none;color:var(--ink);-webkit-text-fill-color:currentColor;display:flex;align-items:center}
+.brand::before{content:"";width:22px;height:22px;border-radius:50%;background:var(--blue);border:2px solid var(--ink);box-shadow:10px 0 0 -2px var(--orange);margin-right:18px}
+.topbar nav a{font-family:var(--mono);font-size:.74rem;letter-spacing:.06em;text-transform:uppercase;color:var(--ink);border-radius:8px}
+.topbar nav a:hover,.topbar nav a.active{background:var(--lime);color:var(--ink);transform:none}
+.topbar nav a[href$="/logout"]:hover{background:var(--orange);color:var(--ink)}
+.nav-badge{background:var(--orange);color:var(--ink);border:2px solid var(--ink)}
+.menu-toggle span{background:var(--ink)}
+.page-heading h1{background:none;color:var(--ink);-webkit-text-fill-color:currentColor;font-size:clamp(2rem,6vw,3rem)}
+.back-link{color:var(--ink);font-family:var(--mono);font-size:.74rem;text-transform:uppercase;letter-spacing:.06em}
+
+/* cards */
+.group-card,.my-group-card,.match-card,.stat-card,.action-card,.meeting-item,.request-card,.details-card,
+.form-section,.availability-card,.auth-card,.request-summary,.heatmap-summary,.search-form,.empty-state,
+.session-series-card,.schedule-form-card,.schedule-empty-state,.sem-card,.sem-month,.cal,.member-card{
+  background:var(--card);border:2px solid var(--ink);border-radius:16px;box-shadow:var(--shadow)}
+.group-card:hover,.my-group-card:hover,.match-card:hover,.stat-card:hover,.action-card:hover,.meeting-item:hover,.request-card:hover{
+  transform:translate(-2px,-2px);box-shadow:var(--shadow-hover);border-color:var(--ink)}
+.group-card.unavailable{background:var(--card);opacity:.85}
+.empty-state,.schedule-empty-state{border-style:dashed;background:var(--card)}
+.member-card{box-shadow:3px 3px 0 var(--ink);border-radius:12px}
+.dashboard-welcome{background:var(--lime);border:2px solid var(--ink);box-shadow:var(--shadow)}
+.profile-header{background:var(--blue);border:2px solid var(--ink);box-shadow:var(--shadow);border-radius:16px}
+.stat-number{background:none;color:var(--blue);-webkit-text-fill-color:currentColor;font-family:var(--display);font-weight:800}
+.action-card-title{color:var(--ink);font-family:var(--display)}
+.auth-page{background:var(--bg)}
+.details-header,.details-description,.details-actions,.my-group-header,.my-group-actions{border-color:var(--ink)}
+
+/* buttons */
+.primary,.secondary,.danger-button,.schedule-form-card button[type="submit"]{
+  font-family:var(--body);font-weight:600;border:2px solid var(--ink);border-radius:12px;box-shadow:4px 4px 0 var(--ink);
+  filter:none;transition:transform .12s,box-shadow .12s,background .12s}
+.primary,.schedule-form-card button[type="submit"]{background:var(--blue);color:#fff}
+.secondary,.danger-button{background:var(--card);color:var(--ink)}
+.primary:hover,.secondary:hover,.danger-button:hover,.schedule-form-card button[type="submit"]:hover{
+  transform:translate(-2px,-2px);box-shadow:6px 6px 0 var(--ink);filter:none}
+.primary:hover,.schedule-form-card button[type="submit"]:hover{background:var(--blue)}
+.secondary:hover{background:var(--lime);border-color:var(--ink)}
+.danger-button:hover{background:var(--orange);color:var(--ink);border-color:var(--ink)}
+.primary:active,.secondary:active,.danger-button:active{transform:translate(3px,3px);box-shadow:1px 1px 0 var(--ink)}
+.primary[disabled],.primary[disabled]:hover{background:var(--card);color:var(--muted);box-shadow:none;transform:none}
+
+/* danger buttons stay visibly red, not just on hover */
+.danger-button{background:#fde6ec;color:var(--danger);border-color:var(--danger)}
+.danger-button:hover{background:var(--danger);color:#fff;border-color:var(--ink)}
+
+/* tighten the gap between a note like "you joined this group" and the button under it */
+.membership-note{margin-bottom:6px}
+.creator-status-control{gap:8px}
+.details-actions > div{display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+
+/* forms: slim focus ring */
+input:not([type="checkbox"]):not([type="radio"]),select,textarea{
+  font-family:var(--body);border:2px solid var(--ink);border-radius:10px;background:var(--card);color:var(--ink)}
+input:not([type="checkbox"]):not([type="radio"]):hover,select:hover,textarea:hover{border-color:var(--ink)}
+input:not([type="checkbox"]):not([type="radio"]):focus,select:focus,textarea:focus{
+  outline:2px solid var(--orange);outline-offset:2px;border-color:var(--ink);box-shadow:none}
+:focus-visible{outline:2px solid var(--orange);outline-offset:2px}
+label>span,.filters legend,.info-label,.details dt{font-family:var(--mono);font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+input[type="checkbox"],input[type="radio"]{accent-color:var(--blue)}
+.required{color:var(--orange)}
+.filters{border:2px solid var(--ink)}
+
+/* tags, status, badges */
+.status,.badge,.member-badge,.invite-state,.session-repeat-badge{
+  font-family:var(--mono);font-size:.7rem;letter-spacing:.05em;text-transform:uppercase;font-weight:500;
+  border:2px solid var(--ink);border-radius:6px;padding:2px 8px;box-shadow:none;color:var(--ink)}
+.status-open,.badge,.member-badge,.invite-accepted{background:var(--lime)}
+.status-full,.invite-expired{background:var(--orange)}
+.status-completed,.invite-state{background:var(--card)}
+.status-cancelled,.invite-declined,.invite-cancelled{background:var(--pink)}
+.joined,.membership-note{color:var(--ink);font-weight:600}
+.blocked,.edit-hint{color:var(--orange)}
+.course,.match-type{color:var(--blue);font-family:var(--mono);font-size:.74rem;text-transform:uppercase;letter-spacing:.06em}
+.match-score{background:var(--blue);color:#fff;border:2px solid var(--ink);box-shadow:3px 3px 0 var(--ink);font-family:var(--display)}
+.match-reason,.chip span{background:var(--card);border:2px solid var(--ink);color:var(--ink)}
+.match-reason:hover,.chip:hover span{background:var(--lime);transform:none;box-shadow:none;border-color:var(--ink)}
+.chip input:checked+span{background:var(--orange);color:var(--ink);box-shadow:none;border-color:var(--ink)}
+
+/* messages */
+.message{border:2px solid var(--ink);border-left-width:2px;border-radius:12px;color:var(--ink)}
+.notice{background:var(--tint)}.error{background:var(--pink)}.success{background:var(--lime)}
+
+/* availability and heatmap */
+.availability-slot span{background:transparent;border:2px solid var(--ink);box-shadow:none}
+.availability-slot:hover span{background:var(--tint);border-color:var(--ink);transform:none}
+.availability-slot input:checked+span{background:var(--blue);border-color:var(--ink);box-shadow:none}
+.legend-box{background:var(--blue);border:2px solid var(--ink)}
+.heat-none{background:var(--card);color:var(--muted)}
+.heat-medium{background:var(--tint);color:var(--ink)}
+.heat-high{background:var(--blue);color:#fff;box-shadow:none}
+.heatmap-cell:hover{transform:none;box-shadow:none}
+.heatmap-table{background:var(--card);border:2px solid var(--ink)}
+
+.availability-slot span{position:relative;border-radius:8px;transition:transform .1s ease}
+.availability-slot:hover span{transform:scale(1.04)}
+.availability-slot input:checked+span::after{content:"\2713";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700}
+.availability-count{margin:10px 0 0;color:var(--muted)}
+
+/* semesters and calendar */
+.sem-card.sem-active{box-shadow:5px 5px 0 var(--blue)}
+.sem-tabs{border:2px solid var(--ink);box-shadow:3px 3px 0 var(--ink)}
+.sem-tabs a{font-family:var(--mono);font-size:.74rem;text-transform:uppercase;letter-spacing:.06em;color:var(--ink)}
+.sem-tabs a.on{background:var(--lime);color:var(--ink)}
+.sem-progress{border:2px solid var(--ink);background:var(--card);height:12px}
+.sem-progress div{background:var(--blue)}
+.cal-day{background:var(--card);border:1px solid var(--ink);border-radius:8px}
+.cal-day.today{border:2px solid var(--orange);box-shadow:none}
+.cal-dow{font-family:var(--mono);text-transform:uppercase;color:var(--muted)}
+.ev{border:2px solid var(--ink);color:var(--ink)}
+.ev-item{background:var(--orange)}.ev-session{background:var(--tint)}.ev-meeting{background:var(--lime)}
+
+/* help button, tutorial, small dialogs */
+.help-fab{background:var(--orange);color:var(--ink);border:2px solid var(--ink);box-shadow:3px 3px 0 var(--ink);font-family:var(--display);font-weight:800}
+.help-fab:hover{filter:none;transform:translate(-1px,-1px);box-shadow:4px 4px 0 var(--ink)}
+.help-menu{border:2px solid var(--ink);border-radius:14px;box-shadow:5px 5px 0 var(--ink)}
+.help-menu button:hover{background:var(--lime);color:var(--ink)}
+.sm-dialog{border:2px solid var(--ink);box-shadow:8px 8px 0 var(--ink)}
+.sm-dots i.on{background:var(--blue)}
+.sm-highlight{box-shadow:0 0 0 3px var(--orange)!important}
+.swatch-dot{border:2px solid var(--ink);box-shadow:none}
+.swatch input:checked+.swatch-dot{box-shadow:0 0 0 3px var(--orange)}
+img.profile-avatar,.profile-avatar,.member-avatar{border:2px solid var(--ink)}
+
+/* danger buttons stay visibly red, not just on hover */
+.danger-button{background:#fde6ec;color:var(--danger);border-color:var(--danger)}
+.danger-button:hover{background:var(--danger);color:#fff;border-color:var(--ink)}
+
+/* tighten the gap between a note like "you joined this group" and the button under it */
+.membership-note{margin-bottom:6px}
+.creator-status-control{gap:8px}
+.details-actions > div{display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+
+
+/* ===== grouped navigation (one shared _nav.html) ===== */
+a.brand{text-decoration:none}
+.topbar nav details{position:relative}
+.topbar nav summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:6px;padding:8px 10px;border-radius:8px;font-family:var(--mono);font-size:.74rem;letter-spacing:.06em;text-transform:uppercase;color:var(--ink)}
+.topbar nav summary::-webkit-details-marker{display:none}
+.topbar nav summary::after{content:"\25BE";font-size:.7rem}
+.topbar nav summary:hover,.topbar nav details[open] summary,.topbar nav details.active summary{background:var(--lime)}
+.nav-menu{position:absolute;top:calc(100% + 6px);left:0;min-width:210px;z-index:60;display:flex;flex-direction:column;gap:2px;padding:6px;background:var(--card);border:2px solid var(--ink);border-radius:12px;box-shadow:5px 5px 0 var(--ink)}
+.nav-menu a{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 10px;white-space:nowrap}
+@media(max-width:900px){
+  .nav-menu{position:static;min-width:0;border:0;box-shadow:none;padding:0 0 0 14px}
+  .topbar nav summary{padding:10px}
+}
+
+/* ===== one Cards / List switch for every page ===== */
+.seg{display:inline-flex;flex-wrap:wrap;border:2px solid var(--ink);border-radius:12px;background:var(--card);overflow:hidden;box-shadow:3px 3px 0 var(--ink)}
+.seg a,.seg button{font-family:var(--mono);font-size:.74rem;text-transform:uppercase;letter-spacing:.06em;color:var(--ink);text-decoration:none;padding:10px 14px;background:transparent;border:0;border-radius:0;box-shadow:none;cursor:pointer}
+.seg a+a,.seg button+button{border-left:2px solid var(--ink)}
+.seg a:hover,.seg button:hover{background:var(--tint);transform:none;box-shadow:none}
+.seg a[aria-current="true"],.seg button[aria-current="true"]{background:var(--lime)}
+.layout-seg{margin:0 0 16px}
+
+.layout-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px}
+.layout-list{display:flex;flex-direction:column;gap:12px}
+.layout-cards>*{transition:transform .15s}
+.layout-cards>*:nth-child(odd){transform:rotate(-.6deg)}
+.layout-cards>*:nth-child(even){transform:rotate(.5deg)}
+.layout-cards>*:hover{transform:rotate(0) translateY(-3px)}
+.layout-list>*{display:flex;flex-wrap:wrap;align-items:center;gap:10px 24px}
+.layout-list .my-group-header{flex:1 1 240px}
+.layout-list .my-group-info{display:flex;flex-wrap:wrap;gap:6px 18px;flex:2 1 300px}
+.layout-list .my-group-actions{display:flex;gap:10px;margin-left:auto}
+@media (prefers-reduced-motion:reduce){.layout-cards>*:nth-child(n){transform:none}}
+
+/* ===== spacing fixes ===== */
+.membership-note{display:block;margin:18px 0 14px;font-weight:600}
+.details-actions > div{gap:14px}
+
+/* ===== dashboard upgrade ===== */
+.dashboard-welcome{position:relative;overflow:hidden;padding:30px 32px;border-radius:20px}
+.dashboard-welcome h1,.dashboard-welcome h2{font-size:clamp(2rem,5vw,3rem);margin:0 0 8px}
+.dashboard-welcome p{font-size:1.05rem;max-width:52ch;margin:0}
+.dashboard-welcome::after{content:"";position:absolute;right:30px;top:50%;width:84px;height:84px;margin-top:-42px;border-radius:50%;background:var(--blue);border:3px solid var(--ink);box-shadow:46px 18px 0 -6px var(--orange)}
+
+.action-card{position:relative;padding:22px 52px 22px 24px;transition:transform .15s,box-shadow .15s,background .15s}
+.action-card::after{content:"\2192";position:absolute;right:20px;top:18px;font-family:var(--display);font-weight:800;font-size:1.5rem}
+.action-card:hover{background:var(--lime)}
+
+.stat-card{padding:24px 12px;transition:transform .15s}
+.stat-card:nth-child(4n+1){background:var(--tint)}
+.stat-card:nth-child(4n+2){background:var(--lime)}
+.stat-card:nth-child(4n+3){background:var(--pink)}
+.stat-card:nth-child(4n+4){background:#ffd9c2}
+.stat-card:nth-child(odd){transform:rotate(-.7deg)}
+.stat-card:nth-child(even){transform:rotate(.6deg)}
+.stat-card:hover{transform:rotate(0) translateY(-3px)}
+.stat-number{font-size:clamp(2.6rem,6vw,3.6rem);line-height:1;color:var(--ink)}
+
+.meeting-item{padding:18px 20px}
+.my-group-card{padding:20px}
+
+@media(max-width:700px){.dashboard-welcome::after{display:none}}
+@media (prefers-reduced-motion:reduce){.stat-card:nth-child(n){transform:none}}
+
+
+/* ===== search results: cards or list ===== */
+.layout-list .group-card .card-head{flex:1 1 260px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.layout-list .group-card .card-head h2{font-size:1.35rem;margin:0}
+.layout-list .group-card .course{flex:0 0 auto;margin:0}
+.layout-list .group-card .description{display:none}
+.layout-list .group-card .details{display:flex;flex-wrap:wrap;gap:4px 18px;flex:2 1 320px;margin:0}
+.layout-list .group-card .details>div{display:flex;gap:6px;align-items:baseline}
+.layout-list .group-card .card-actions{display:flex;align-items:center;gap:10px;margin-left:auto}
+.layout-list .group-card .card-actions form{margin:0}
+
+/* ===== schedule page ===== */
+.schedule-form-card{padding:24px;margin-bottom:28px}
+.schedule-helper{color:var(--muted);margin:0 0 16px}
+.sch-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px 18px;align-items:end}
+.sch-form label{display:block;margin-bottom:6px;font-family:var(--mono);font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.sch-form input,.sch-form select{width:100%;box-sizing:border-box;padding:10px 12px;font-size:1rem}
+.sch-form button[type="submit"]{grid-column:1/-1;justify-self:start;padding:12px 22px}
+
+.schedule-section-header h2{font-size:1.8rem;margin:0 0 4px}
+.schedule-section-header p{color:var(--muted);margin:0 0 16px}
+.schedule-empty-state{padding:24px}
+
+.session-series-card{padding:18px 20px;display:flex;flex-direction:column;gap:12px}
+.layout-list .session-series-card{flex-direction:column;align-items:stretch}
+.session-series-header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.session-series-header h3{font-size:1.35rem;margin:0}
+.session-group-name{font-family:var(--mono);font-size:.74rem;text-transform:uppercase;letter-spacing:.05em;color:var(--blue);margin:6px 0 0}
+.session-occurrences{display:flex;flex-direction:column;gap:8px}
+.session-occurrence-row{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 12px;border:2px solid var(--ink);border-radius:12px;background:var(--bg)}
+.session-occurrence-info{display:flex;gap:6px 16px;flex-wrap:wrap;align-items:baseline}
+.session-occurrence-actions,.session-series-actions{display:flex;gap:8px;align-items:center}
+.session-occurrence-actions form,.session-series-actions form{margin:0}
+.session-action-edit,.session-series-edit,.session-action-cancel,.session-series-cancel{font-family:var(--body);font-weight:600;font-size:.9rem;padding:7px 12px;border:2px solid var(--ink);border-radius:10px;box-shadow:3px 3px 0 var(--ink);text-decoration:none;cursor:pointer;color:var(--ink);background:var(--card)}
+.session-action-edit:hover,.session-series-edit:hover{background:var(--lime)}
+.session-action-cancel,.session-series-cancel{background:#fde6ec;color:var(--danger);border-color:var(--danger)}
+.session-action-cancel:hover,.session-series-cancel:hover{background:var(--danger);color:#fff;border-color:var(--ink)}
+.session-series-footer{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;border-top:2px dashed var(--ink);padding-top:12px;font-family:var(--mono);font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}

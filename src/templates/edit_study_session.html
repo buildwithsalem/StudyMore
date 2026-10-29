@@ -5,29 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Edit Study Series | StudyMore</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='zine.css') }}">
+    {% include "_ui_head.html" %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='theme_motion.css') }}">
+    <script src="{{ url_for('static', filename='theme_motion.js') }}" defer></script>
 </head>
 
 <body>
 
-<header class="topbar">
-    <div class="site-nav-wrap">
-        <a class="brand" href="/dashboard">StudyMore</a>
-
-        <nav id="site-nav">
-            <a href="/dashboard">Dashboard</a>
-            <a href="/search">Search Groups</a>
-            <a href="/create-group">Create Group</a>
-            <a href="/my-groups">My Groups</a>
-            <a href="/invitations">Invitations</a>
-            <a href="/study-request">Find My Match</a>
-            <a href="/availability">Availability</a>
-            <a href="/schedule" class="active">Schedule</a>
-            <a href="/profile">Profile</a>
-            <a href="/logout">Log Out</a>
-            <a href="{{ url_for('semesters.semesters') }}">Semesters</a>
-        </nav>
-    </div>
-</header>
+{% include "_nav.html" %}
 
 <main class="schedule-page">
 
@@ -179,8 +165,6 @@
 
 </main>
 
-<link rel="stylesheet" href="{{ url_for('static', filename='studymore_help.css') }}">
-<script>window.STUDYMORE_CAMPUS = "University of Texas at Arlington, Arlington, TX";</script>
-<script src="{{ url_for('static', filename='studymore_help.js') }}"></script>
+{% include "_ui_foot.html" %}
 </body>
 </html>
