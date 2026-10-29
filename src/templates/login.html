@@ -30,6 +30,10 @@
         <div class="message error" role="alert">{{ error }}</div>
         {% endif %}
 
+        {% if info %}
+        <div class="message success" role="status">{{ info }}</div>
+        {% endif %}
+
         <form method="POST" class="auth-form">
 
             <label>
@@ -61,6 +65,10 @@
             </button>
 
         </form>
+
+        <p class="auth-switch">
+            <a href="{{ url_for('reset.forgot_password') }}">Forgot your password?</a>
+        </p>
 
         <p class="auth-switch">
             Don't have an account?

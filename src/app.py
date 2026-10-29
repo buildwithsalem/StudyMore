@@ -45,6 +45,9 @@ app.register_blueprint(invitations_bp)
 from semesters import semesters_bp
 app.register_blueprint(semesters_bp)
 
+from password_reset import reset_bp
+app.register_blueprint(reset_bp)
+
 from syllabus import syllabus_bp
 app.register_blueprint(syllabus_bp)
 
@@ -2286,6 +2289,11 @@ def close_study_request(request_id):
     return redirect(url_for("dashboard.dashboard"))
 
 
+def register_error(message, name="", email=""):
+    """Show a sign-up problem on the sign-up page instead of a blank text page."""
+    return render_template("register.html", error=message, name=name, email=email), 400
+
+
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
@@ -2295,17 +2303,15 @@ def register():
         confirm_password = request.form.get("confirm_password", "").strip()
 
         if not name or not email or not password or not confirm_password:
-            return "Name, email, password, and confirm password are required", 400
-        
+            return register_error("Name, email, password, and confirm password are required", name, email)
+
         if not is_uta_email(email):
-            return (
+            return register_error(
                 "Please register with your UTA student email address "
-                "(must end in @mavs.uta.edu)",
-                400
-            )
+                "(must end in @mavs.uta.edu)", name, email)
 
         if password != confirm_password:
-            return "Password and confirmation do not match", 400
+            return register_error("Password and confirmation do not match", name, email)
 
         conn = get_db_connection()
         conn.row_factory = sqlite3.Row
@@ -2316,7 +2322,7 @@ def register():
 
         if existing is not None:
             conn.close()
-            return "An account with that email already exists", 400
+            return register_error("An account with that email already exists", name, email)
 
         hashed_password = generate_password_hash(password)
         ensure_verification_schema(conn)
@@ -2330,7 +2336,7 @@ def register():
         except sqlite3.IntegrityError:
             conn.rollback()
             conn.close()
-            return "An account with that email already exists", 400
+            return register_error("An account with that email already exists", name, email)
 
         conn.commit()
         new_user_id = cursor.lastrowid
@@ -2388,8 +2394,7 @@ def login():
         session["user_name"] = user["name"]
 
         return redirect(url_for("dashboard.dashboard"))
-
-    return render_template("login.html")
+    return render_template("login.html", info=session.pop("login_info", None))
 
 
 

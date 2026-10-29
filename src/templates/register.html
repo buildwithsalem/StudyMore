@@ -26,6 +26,10 @@
             <p>Join StudyMore and start finding study groups for your courses.</p>
         </div>
 
+        {% if error %}
+        <div class="message error" role="alert">{{ error }}</div>
+        {% endif %}
+
         <form method="POST" class="auth-form">
 
             <label>
@@ -34,6 +38,7 @@
                     name="name"
                     type="text"
                     placeholder="Enter your name"
+                    value="{{ name or '' }}"
                     required>
             </label>
 
@@ -43,6 +48,7 @@
                     name="email"
                     type="email"
                     placeholder="Enter your email"
+                    value="{{ email or '' }}"
                     required>
             </label>
             <p class="form-hint">Must be a UTA student email (ends in @mavs.uta.edu)</p>

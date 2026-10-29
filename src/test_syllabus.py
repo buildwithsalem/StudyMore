@@ -157,13 +157,13 @@ def test_study_plan_rules_and_skips_past_dates():
 # ------------------------------------------------------------------- routes
 
 @pytest.fixture
-def ctx(tmp_path):
+def ctx(tmp_path, monkeypatch):
     from app import app, create_test_user, init_db
     from semesters import ensure_semester_schema
 
     path = str(tmp_path / "test.db")
-    app.config["DATABASE"] = path
-    app.config["TESTING"] = True
+    monkeypatch.setitem(app.config, "DATABASE", path)
+    monkeypatch.setitem(app.config, "TESTING", True)
     init_db(path)
     create_test_user(path)
     conn = sqlite3.connect(path)
