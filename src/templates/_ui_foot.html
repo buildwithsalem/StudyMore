@@ -1,2 +1,11 @@
 <script>window.SM = {{ {"user": ui_user, "campus": ui_campus}|tojson }};</script>
 <script src="{{ url_for('static', filename='ui.js') }}"></script>
+<a class="sm-feedback" href="https://forms.gle/okbdnXBJCVLtgMqT8" target="_blank" rel="noopener">Give feedback</a>
+<style>
+.sm-feedback{position:fixed;right:16px;bottom:16px;z-index:9999;padding:10px 16px;
+  background:#2b5fd9;color:#fff;font:600 14px/1 system-ui,sans-serif;text-decoration:none;
+  border-radius:999px;box-shadow:0 2px 10px rgba(0,0,0,.3)}
+.sm-feedback:hover{background:#1f49ad}
+.sm-feedback:focus-visible{outline:3px solid #fff;outline-offset:2px}
+@media print{.sm-feedback{display:none}}
+</style>
