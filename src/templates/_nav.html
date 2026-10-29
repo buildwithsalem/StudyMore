@@ -1,6 +1,6 @@
 {% set ep = request.endpoint or '' %}
 {% set groups_active = ep in ['search.search', 'create_group', 'my_groups', 'group_details', 'edit_group'] or ep.startswith('invitations.') %}
-{% set plan_active = ep in ['study_request', 'study_matches', 'availability', 'availability_heatmap', 'schedule'] or ep.startswith('semesters.') or ep.startswith('syllabus.') %}
+{% set plan_active = ep in ['study_request', 'study_matches', 'availability', 'availability_heatmap', 'schedule', 'ui.campus'] or ep.startswith('semesters.') or ep.startswith('syllabus.') %}
 <header class="topbar">
     <a class="brand" href="{{ url_for('dashboard.dashboard') }}">StudyMore</a>
     <button type="button" class="menu-toggle" aria-label="Toggle menu" aria-controls="site-nav" aria-expanded="false" onclick="var n=document.getElementById('site-nav');n.classList.toggle('open');this.classList.toggle('open');this.setAttribute('aria-expanded', n.classList.contains('open'));">
@@ -26,6 +26,7 @@
                 <a href="{{ url_for('availability') }}">Availability</a>
                 <a href="{{ url_for('schedule') }}">Schedule</a>
                 <a href="{{ url_for('semesters.semesters') }}">Semesters</a>
+                <a href="{{ url_for('ui.campus') }}">Campus Directions</a>
             </div>
         </details>
 

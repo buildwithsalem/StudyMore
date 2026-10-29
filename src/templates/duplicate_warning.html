@@ -8,6 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='zine.css') }}">
+    {% include "_ui_head.html" %}
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
 </head>
 
@@ -154,8 +155,6 @@
 
 </main>
 
-<link rel="stylesheet" href="{{ url_for('static', filename='studymore_help.css') }}">
-<script>window.STUDYMORE_CAMPUS = "University of Texas at Arlington, Arlington, TX";</script>
-<script src="{{ url_for('static', filename='studymore_help.js') }}"></script>
+{% include "_ui_foot.html" %}
 </body>
 </html>

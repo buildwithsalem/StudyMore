@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='zine.css') }}">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="stylesheet" href="{{ url_for('static', filename='group_directions.css') }}">
+    {% include "_ui_head.html" %}
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
     </head>
 
@@ -210,8 +211,6 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="{{ url_for('static', filename='group_directions.js') }}"></script>
-<link rel="stylesheet" href="{{ url_for('static', filename='studymore_help.css') }}">
-<script>window.STUDYMORE_CAMPUS = "University of Texas at Arlington, Arlington, TX";</script>
-<script src="{{ url_for('static', filename='studymore_help.js') }}"></script>
+{% include "_ui_foot.html" %}
 </body>
 </html>

@@ -90,7 +90,7 @@ class DatabaseConfigurationTests(IntegrationTestCase):
         self.conn.commit()
         self.log_in()
         body = self.client.get("/dashboard").data.decode()
-        self.assertIn("Welcome back, Configured DB User!", body)
+        self.assertIn('<span class="hl">Configured DB User</span>', body)
 
     def test_group_created_through_the_app_is_visible_on_the_dashboard(self):
         """app.py routes and the dashboard blueprint read/write the same database."""
@@ -136,7 +136,7 @@ class DatabaseConfigurationTests(IntegrationTestCase):
 
         self.flask_app.config["DATABASE"] = other
         self.log_in()
-        self.assertIn("Welcome back, Other DB User!",
+        self.assertIn('<span class="hl">Other DB User</span>',
                       self.client.get("/dashboard").data.decode())
         self.assertEqual(self.client.get("/my-groups").status_code, 200)
         self.assertEqual(self.client.get("/search").status_code, 200)

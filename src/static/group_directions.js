@@ -2,9 +2,20 @@
    No API key needed. Needs Leaflet loaded first. */
 (function () {
   var root = document.getElementById("directions");
-  if (!root || typeof L === "undefined") return;
+  if (!root) return;
+  if (typeof L === "undefined") {
+    // map library blocked or offline: still give a working Google Maps link
+    window.StudyMoreSetPlace = function (name, onCampus) {
+      var g = document.getElementById("dir-google"), c = root.dataset.campus || "";
+      if (g) g.href = "https://www.google.com/maps/dir/?api=1&travelmode=walking&destination=" + encodeURIComponent(name + (onCampus !== false && c ? ", " + c : ""));
+      var st = document.getElementById("dir-status");
+      if (st) { st.textContent = "The map could not load. Use the Google Maps link below."; st.className = "dir-status err"; }
+    };
+    return;
+  }
 
   var place = root.dataset.place || "";
+  var nearCampus = true;
   var campus = root.dataset.campus || "";
   var statusEl = document.getElementById("dir-status");
   var summaryEl = document.getElementById("dir-summary");
@@ -27,7 +38,7 @@
   }
 
   function geocode(query) {
-    var url = "https://photon.komoot.io/api/?limit=1&q=" + encodeURIComponent(query);
+    var url = "https://photon.komoot.io/api/?limit=1&lat=32.7299&lon=-97.1125&q=" + encodeURIComponent(query);
     return fetch(url)
       .then(function (r) { return r.json(); })
       .then(function (data) {
@@ -39,7 +50,8 @@
   }
 
   function googleLink(origin) {
-    var dest = encodeURIComponent(place + (campus ? ", " + campus : ""));
+    if (!place) { googleEl.removeAttribute("href"); return; }
+    var dest = encodeURIComponent(place + (nearCampus && campus ? ", " + campus : ""));
     var url = "https://www.google.com/maps/dir/?api=1&travelmode=walking&destination=" + dest;
     if (origin) url += "&origin=" + encodeURIComponent(origin);
     googleEl.href = url;
@@ -91,15 +103,26 @@
     }).catch(function () { say("Could not load directions right now. Try the Google Maps link below.", true); });
   }
 
-  geocode(place + (campus ? ", " + campus : "")).then(function (pt) {
-    if (!pt) { say("We couldn't pin this exact spot on the map. Use the Google Maps link below.", true); return; }
-    dest = pt;
-    destMarker = L.marker([pt.lat, pt.lon]).addTo(map).bindPopup(place);
-    map.setView([pt.lat, pt.lon], 17);
-  }).catch(function () { say("The map service is not responding. Use the Google Maps link below.", true); });
+  function setPlace(name, onCampus) {
+    place = name; nearCampus = onCampus !== false; dest = null;
+    if (destMarker) { map.removeLayer(destMarker); destMarker = null; }
+    if (routeLayer) { map.removeLayer(routeLayer); routeLayer = null; }
+    summaryEl.hidden = true; stepsEl.innerHTML = "";
+    googleLink();
+    say("Locating " + name + "...");
+    geocode(name + (nearCampus && campus ? ", " + campus : "")).then(function (pt) {
+      if (place !== name) return;
+      if (!pt) { say("We couldn't pin this exact spot on the map. Use the Google Maps link below.", true); return; }
+      dest = pt; say("");
+      destMarker = L.marker([pt.lat, pt.lon]).addTo(map).bindPopup(name);
+      map.setView([pt.lat, pt.lon], 17);
+    }).catch(function () { say("The map service is not responding. Use the Google Maps link below.", true); });
+  }
+  window.StudyMoreSetPlace = setPlace;
+  if (place) setPlace(place, true);
 
   document.getElementById("dir-locate").onclick = function () {
-    if (!dest) { say("Still locating the destination. Try again in a moment.", true); return; }
+    if (!dest) { say(place ? "Still locating the destination. Try again in a moment." : "Pick a place first.", true); return; }
     if (!navigator.geolocation) { say("Your browser can't share its location. Type a starting point instead.", true); return; }
     say("Getting your location...");
     navigator.geolocation.getCurrentPosition(function (pos) {

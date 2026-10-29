@@ -8,6 +8,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='zine.css') }}">
+    {% include "_ui_head.html" %}
   <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
 
 </head>
@@ -26,7 +27,7 @@
   <!-- Welcome Header -->
   <section class="dashboard-welcome">
     <div>
-      <h1>Welcome back, {{ user_name }}!</h1>
+      <h1 data-greet><span class="greet-word">Hey</span>, <span class="hl">{{ user_name }}</span>.</h1>
       <p>Here is your study overview, upcoming schedule, and group activity.</p>
     </div>
   </section>
@@ -186,7 +187,7 @@
             <div class="card-actions">
               <a class="secondary" href="{{ url_for('group_details', group_id=group.id) }}">View Details</a>
               <form method="post" action="{{ url_for('leave_group', group_id=group.id) }}">
-                <button type="submit" class="secondary" onclick="return confirm('Are you sure you want to leave this study group?');">Leave Group</button>
+                <button type="submit" class="danger-button" onclick="return confirm('Are you sure you want to leave this study group?');">Leave Group</button>
               </form>
             </div>
           </article>
@@ -276,8 +277,6 @@
   </section>
 </main>
 
-<link rel="stylesheet" href="{{ url_for('static', filename='studymore_help.css') }}">
-<script>window.STUDYMORE_CAMPUS = "University of Texas at Arlington, Arlington, TX";</script>
-<script src="{{ url_for('static', filename='studymore_help.js') }}"></script>
+{% include "_ui_foot.html" %}
 </body>
 </html>

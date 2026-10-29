@@ -1,10 +1,12 @@
 """Login and register show a friendly error on the page (not a blank text page)."""
 
-from app import app
+from app import app, init_db
 
 
-def test_wrong_password_shows_error_on_login_page(monkeypatch):
+def test_wrong_password_shows_error_on_login_page(monkeypatch, tmp_path):
     monkeypatch.setitem(app.config, "TESTING", True)
+    monkeypatch.setitem(app.config, "DATABASE", str(tmp_path / "auth.db"))
+    init_db()
     client = app.test_client()
     resp = client.post("/login", data={"email": "nobody@example.com", "password": "nope"})
     assert resp.status_code == 400

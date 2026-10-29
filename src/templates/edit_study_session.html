@@ -6,6 +6,7 @@
     <title>Edit Study Series | StudyMore</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='zine.css') }}">
+    {% include "_ui_head.html" %}
 </head>
 
 <body>
@@ -162,8 +163,6 @@
 
 </main>
 
-<link rel="stylesheet" href="{{ url_for('static', filename='studymore_help.css') }}">
-<script>window.STUDYMORE_CAMPUS = "University of Texas at Arlington, Arlington, TX";</script>
-<script src="{{ url_for('static', filename='studymore_help.js') }}"></script>
+{% include "_ui_foot.html" %}
 </body>
 </html>
