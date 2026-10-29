@@ -8,6 +8,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='semesters.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='zine.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='semesters_zine.css') }}">
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
 </head>
 <body>
@@ -15,12 +17,17 @@
 <div class="crumbs"><a href="{{ url_for('semesters.semesters') }}" class="back-link">&larr; All semesters</a></div>
 
 <main class="sem-main">
-    <div class="page-heading">
-        <h1>{{ semester.name }}</h1>
-        <p>{{ semester.start_date }} to {{ semester.end_date }} &middot; {{ days_left }} day{{ '' if days_left == 1 else 's' }} left</p>
+    <div class="sem-hero">
+        <div>
+            <h1><span class="hl">{{ semester.name }}</span></h1>
+            <p>{{ semester.start_date }} to {{ semester.end_date }} &middot; {{ days_left }} day{{ '' if days_left == 1 else 's' }} left</p>
+        </div>
+        <div class="sec-actions">
+            <a class="primary" href="{{ url_for('syllabus.syllabus_upload', semester_id=semester.id) }}">Upload syllabus</a>
+        </div>
     </div>
 
-    <div class="sem-progress" role="progressbar" aria-valuemin="0" aria-valuemax="{{ total_days }}" aria-valuenow="{{ days_done }}">
+    <div class="sem-bar" role="progressbar" aria-valuemin="0" aria-valuemax="{{ total_days }}" aria-valuenow="{{ days_done }}">
         <div style="width: {{ (days_done * 100 / total_days)|round|int }}%"></div>
     </div>
 
@@ -30,17 +37,18 @@
 
     {% if error %}<div class="message error" role="alert">{{ error }}</div>{% endif %}
 
-    <div class="sem-tabs">
-        <a href="{{ url_for('semesters.semester_view', semester_id=semester.id) }}" class="{{ 'on' if view == 'month' }}">Monthly</a>
-        <a href="{{ url_for('semesters.semester_view', semester_id=semester.id, view='semester') }}" class="{{ 'on' if view == 'semester' }}">Whole semester</a>
+    <div class="seg seg-row" role="group" aria-label="Choose a view">
+        {% for key, label in view_options %}
+        <a href="{{ url_for('semesters.semester_view', semester_id=semester.id, view=key) }}"{% if view == key %} aria-current="true"{% endif %}>{{ label }}</a>
+        {% endfor %}
     </div>
 
     {% if view == 'month' %}
     <section class="cal">
         <div class="cal-head">
-            <a class="secondary" href="{{ url_for('semesters.semester_view', semester_id=semester.id, month=prev_month) }}" aria-label="Previous month">&larr;</a>
+            <a class="secondary" href="{{ url_for('semesters.semester_view', semester_id=semester.id, view='month', month=prev_month) }}" aria-label="Previous month">&larr;</a>
             <h2>{{ month_label }}</h2>
-            <a class="secondary" href="{{ url_for('semesters.semester_view', semester_id=semester.id, month=next_month) }}" aria-label="Next month">&rarr;</a>
+            <a class="secondary" href="{{ url_for('semesters.semester_view', semester_id=semester.id, view='month', month=next_month) }}" aria-label="Next month">&rarr;</a>
         </div>
         <div class="cal-scroll">
         <div class="cal-grid">
@@ -57,13 +65,72 @@
         </div>
         <p class="cal-key"><span class="ev ev-item">Deadline</span> <span class="ev ev-session">Study session</span> <span class="ev ev-meeting">Group meeting</span></p>
     </section>
+
+    {% elif view == 'week' %}
+    <section class="cal">
+        <div class="cal-head">
+            <a class="secondary" href="{{ url_for('semesters.semester_view', semester_id=semester.id, view='week', week=prev_week) }}" aria-label="Previous week">&larr;</a>
+            <h2>{{ week_label }}</h2>
+            <a class="secondary" href="{{ url_for('semesters.semester_view', semester_id=semester.id, view='week', week=next_week) }}" aria-label="Next week">&rarr;</a>
+        </div>
+        <div class="week-grid">
+            {% for day in week_days %}
+            <div class="week-day{% if day == today %} today{% endif %}">
+                <b><span>{{ day.strftime('%a') }}</span><span>{{ day.strftime('%b %d') }}</span></b>
+                {% for e in events.get(day, []) %}
+                <div class="ev ev-{{ e.kind }}">{{ e.label }}{% if e.when or e.sub %}<small>{{ e.when or e.sub }}</small>{% endif %}</div>
+                {% else %}
+                <span class="week-empty">Nothing planned</span>
+                {% endfor %}
+            </div>
+            {% endfor %}
+        </div>
+        <p class="cal-key"><span class="ev ev-item">Deadline</span> <span class="ev ev-session">Study session</span> <span class="ev ev-meeting">Group meeting</span></p>
+    </section>
+
+    {% elif view == 'list' %}
+    <section class="agenda">
+        {% for row in agenda %}
+        <div class="agenda-row{% if row.is_past %} past{% endif %}{% if row.is_today %} today{% endif %}">
+            <div class="agenda-date"><small>{{ row.day.strftime('%a') }}</small>{{ row.day.strftime('%b %d') }}</div>
+            <div class="agenda-events">
+                {% for e in row.events %}
+                <div class="agenda-event">
+                    <span class="ev ev-{{ e.kind }}">{{ e.label }}</span>
+                    <span class="agenda-sub">{{ e.sub }}{% if e.when %} &middot; {{ e.when }}{% endif %}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% else %}
+        <div class="empty-state"><p>Nothing scheduled yet. Add a deadline below or upload your syllabus.</p></div>
+        {% endfor %}
+    </section>
+
+    {% elif view == 'cards' %}
+    <section class="dl-grid">
+        {% for i in cards %}
+        <article class="dl{% if i.is_past %} past{% endif %}">
+            <div><span class="tag k-{{ i.item_type|lower }}">{{ i.item_type }}</span></div>
+            <h3>{{ i.title }}</h3>
+            <p class="dl-when">
+                {{ i.due_date }}{% if i.course_code %} &middot; {{ i.course_code }}{% endif %}<br>
+                {% if i.days_until == 0 %}Today{% elif i.days_until == 1 %}Tomorrow{% elif i.days_until > 1 %}In {{ i.days_until }} days{% elif i.days_until == -1 %}Yesterday{% else %}{{ -i.days_until }} days ago{% endif %}
+            </p>
+            <form method="POST" action="{{ url_for('semesters.delete_item', semester_id=semester.id, item_id=i.id) }}"><button type="submit" class="danger-button">Remove</button></form>
+        </article>
+        {% else %}
+        <div class="empty-state"><p>No deadlines yet. Add one below or upload your syllabus.</p></div>
+        {% endfor %}
+    </section>
+
     {% else %}
     <section class="sem-months">
         {% for m in months %}
         <article class="sem-month">
             <div class="sem-month-head">
                 <h2>{{ m.label }}</h2>
-                <a href="{{ url_for('semesters.semester_view', semester_id=semester.id, month=m.key) }}" class="section-link">{{ m.count }} item{{ '' if m.count == 1 else 's' }} &middot; open month</a>
+                <a href="{{ url_for('semesters.semester_view', semester_id=semester.id, view='month', month=m.key) }}" class="section-link">{{ m.count }} item{{ '' if m.count == 1 else 's' }} &middot; open month</a>
             </div>
             {% if m.days %}
             <ul class="sem-events">
@@ -93,7 +160,7 @@
         </form>
     </section>
 
-    {% if items %}
+    {% if items and view != 'cards' %}
     <section class="sem-items">
         <h2>All deadlines</h2>
         <ul class="member-list">

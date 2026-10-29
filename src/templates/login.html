@@ -26,6 +26,10 @@
             <p>Log in to continue to StudyMore.</p>
         </div>
 
+        {% if error %}
+        <div class="message error" role="alert">{{ error }}</div>
+        {% endif %}
+
         <form method="POST" class="auth-form">
 
             <label>
@@ -34,6 +38,8 @@
                     name="email"
                     type="email"
                     placeholder="Enter your email"
+                    value="{{ email or '' }}"
+                    {% if error %}autofocus{% endif %}
                     required>
             </label>
 

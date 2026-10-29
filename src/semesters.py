@@ -235,6 +235,13 @@ def semesters():
             return redirect(url_for("semesters.semesters"))
         status_code = 400
 
+    layout = request.args.get("layout")
+    if layout in ("cards", "list"):
+        session["sem_layout"] = layout
+    layout = session.get("sem_layout")
+    if layout not in ("cards", "list"):
+        layout = "cards"
+
     rows = conn.execute(
         """
         SELECT s.*, (SELECT COUNT(*) FROM semester_items i WHERE i.semester_id = s.id) AS item_count
@@ -242,10 +249,24 @@ def semesters():
         """,
         (user_id,),
     ).fetchall()
+
+    today = date.today()
+    cards = []
+    for row in rows:
+        s = dict(row)
+        start, end = parse_date(s["start_date"]), parse_date(s["end_date"])
+        total = max((end - start).days, 1)
+        s["progress"] = min(max((today - start).days * 100 // total, 0), 100)
+        s["days_left"] = max((end - today).days, 0)
+        s["is_over"] = today > end
+        s["is_upcoming"] = today < start
+        cards.append(s)
+
     return (
         render_template(
             "semesters.html",
-            semesters=[dict(r) for r in rows],
+            semesters=cards,
+            layout=layout,
             terms=TERMS,
             this_year=date.today().year,
             error=error,
@@ -306,6 +327,21 @@ def shift_month(first_of_month, delta):
     return date(index // 12, index % 12 + 1, 1)
 
 
+VIEW_OPTIONS = (
+    ("month", "Monthly"),
+    ("week", "Weekly"),
+    ("list", "List"),
+    ("cards", "Cards"),
+    ("semester", "Whole semester"),
+)
+VIEW_KEYS = tuple(key for key, _ in VIEW_OPTIONS)
+
+
+def week_start_of(day):
+    """The Sunday that starts the week containing `day`."""
+    return day - timedelta(days=(day.weekday() + 1) % 7)
+
+
 @semesters_bp.route("/semesters/<int:semester_id>")
 def semester_view(semester_id):
     user_id = login_required_user()
@@ -320,20 +356,37 @@ def semester_view(semester_id):
     sem_start = parse_date(sem["start_date"])
     sem_end = parse_date(sem["end_date"])
     today = date.today()
-    view = "semester" if request.args.get("view") == "semester" else "month"
 
-    items = conn.execute(
+    # The chosen view is remembered between visits.
+    requested = request.args.get("view")
+    if requested is None and request.args.get("month"):
+        requested = "month"
+    if requested in VIEW_KEYS:
+        session["sem_view"] = requested
+    view = session.get("sem_view")
+    if view not in VIEW_KEYS:
+        view = "month"
+
+    items = []
+    for row in conn.execute(
         "SELECT * FROM semester_items WHERE semester_id = ? AND user_id = ? ORDER BY due_date, title",
         (semester_id, user_id),
-    ).fetchall()
-    upcoming = [i for i in items if i["due_date"] >= today.isoformat()]
+    ).fetchall():
+        item = dict(row)
+        due = parse_date(item["due_date"])
+        item["days_until"] = (due - today).days if due else 0
+        item["is_past"] = item["days_until"] < 0
+        items.append(item)
+    upcoming = [i for i in items if not i["is_past"]]
 
     context = {
         "semester": dict(sem),
         "view": view,
-        "items": [dict(i) for i in items],
+        "view_options": VIEW_OPTIONS,
+        "items": items,
+        "cards": sorted(items, key=lambda i: (i["is_past"], i["due_date"], i["title"])),
         "upcoming_count": len(upcoming),
-        "next_item": dict(upcoming[0]) if upcoming else None,
+        "next_item": upcoming[0] if upcoming else None,
         "days_left": max((sem_end - today).days, 0),
         "total_days": (sem_end - sem_start).days or 1,
         "days_done": min(max((today - sem_start).days, 0), (sem_end - sem_start).days or 1),
@@ -343,9 +396,10 @@ def semester_view(semester_id):
         "error": request.args.get("error"),
     }
 
+    default_day = today if sem_start <= today <= sem_end else sem_start
+
     if view == "month":
-        default = today if sem_start <= today <= sem_end else sem_start
-        first = month_start_of(request.args.get("month"), default)
+        first = month_start_of(request.args.get("month"), default_day)
         weeks = calendar.Calendar(firstweekday=6).monthdatescalendar(first.year, first.month)
         events = load_events(conn, user_id, semester_id, weeks[0][0], weeks[-1][-1])
         context.update(
@@ -356,7 +410,23 @@ def semester_view(semester_id):
             events=events,
             current_month=first.month,
         )
-    else:
+    elif view == "week":
+        first = week_start_of(parse_date(request.args.get("week")) or default_day)
+        week_days = [first + timedelta(days=n) for n in range(7)]
+        context.update(
+            week_label=f"{week_days[0].strftime('%b %d')} to {week_days[-1].strftime('%b %d, %Y')}",
+            prev_week=(first - timedelta(days=7)).isoformat(),
+            next_week=(first + timedelta(days=7)).isoformat(),
+            week_days=week_days,
+            events=load_events(conn, user_id, semester_id, week_days[0], week_days[-1]),
+        )
+    elif view == "list":
+        events = load_events(conn, user_id, semester_id, sem_start, sem_end)
+        context["agenda"] = [
+            {"day": d, "events": events[d], "is_past": d < today, "is_today": d == today}
+            for d in sorted(events)
+        ]
+    elif view == "semester":
         events = load_events(conn, user_id, semester_id, sem_start, sem_end)
         months = []
         cursor = sem_start.replace(day=1)

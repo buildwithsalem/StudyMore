@@ -28,7 +28,7 @@ app.config["MAX_CONTENT_LENGTH"] = 6 * 1024 * 1024
 
 @app.errorhandler(413)
 def file_too_large(error):
-    return "That file is too large. Profile photos must be 3 MB or smaller.", 413
+        return "That file is too large. Profile photos must be 3 MB or smaller and syllabus files 5 MB or smaller.", 413
 app.register_blueprint(search_bp)
 from student_profile import profile_bp, ensure_table as ensure_profile_table, get_member_cards
 app.register_blueprint(profile_bp)
@@ -44,6 +44,9 @@ app.register_blueprint(invitations_bp)
 
 from semesters import semesters_bp
 app.register_blueprint(semesters_bp)
+
+from syllabus import syllabus_bp
+app.register_blueprint(syllabus_bp)
 
 def init_db(database=None):
     """Create any missing tables in `database` (default: app.config["DATABASE"])."""
@@ -1008,66 +1011,40 @@ def schedule():
             else:
                 # Build every date on which the new session would occur.
                 proposed_dates = []
-
-                current_date = datetime.strptime(
-                    session_date, "%Y-%m-%d"
-                )
+                current_date = datetime.strptime(session_date, "%Y-%m-%d")
 
                 if recurrence == "none":
                     proposed_dates.append(session_date)
-
                 else:
-                    repeat_until = datetime.strptime(
-                        recurrence_end_date, "%Y-%m-%d"
-                    )
-
-                    if recurrence == "daily":
-                        step = timedelta(days=1)
-                    else:
-                        step = timedelta(weeks=1)
-
-                    while (
-                        current_date <= repeat_until
-                        and current_date <= datetime.strptime(
-                        session_date, "%Y-%m-%d"
-                        ) + timedelta(days=365)
-                    ):
-                        proposed_dates.append(
-                            current_date.strftime("%Y-%m-%d")
-                        )
+                    repeat_until = datetime.strptime(recurrence_end_date, "%Y-%m-%d")
+                    step = timedelta(days=1) if recurrence == "daily" else timedelta(weeks=1)
+                    last_allowed = current_date + timedelta(days=365)
+                    while current_date <= repeat_until and current_date <= last_allowed:
+                        proposed_dates.append(current_date.strftime("%Y-%m-%d"))
                         current_date += step
-                        conn.execute("BEGIN IMMEDIATE")
-                        # Get all scheduled sessions from groups this student belongs to.
-                        existing_sessions = conn.execute(
-                        """
-                        SELECT
-                            ss.session_date,
-                            ss.start_time,
-                            ss.end_time,
-                            ss.recurrence,
-                            ss.recurrence_end_date
-                            FROM study_sessions ss
-                            JOIN group_memberships gm
-                            ON gm.group_id = ss.group_id
-                            WHERE gm.user_id = ?
-                            AND ss.status = 'scheduled'
-                        """,
-                        (user_id,)
+
+                conn.execute("BEGIN IMMEDIATE")
+
+                # Get all scheduled sessions from groups this student belongs to.
+                existing_sessions = conn.execute(
+                    """
+                    SELECT ss.session_date, ss.start_time, ss.end_time,
+                           ss.recurrence, ss.recurrence_end_date
+                    FROM study_sessions ss
+                    JOIN group_memberships gm ON gm.group_id = ss.group_id
+                    WHERE gm.user_id = ? AND ss.status = 'scheduled'
+                    """,
+                    (user_id,)
                 ).fetchall()
                 group_meetings = conn.execute(
                     """
-                    SELECT
-                        sg.meeting_date,
-                        sg.meeting_time
+                    SELECT sg.meeting_date, sg.meeting_time
                     FROM study_groups sg
-                    JOIN group_memberships gm
-                        ON gm.group_id = sg.id
+                    JOIN group_memberships gm ON gm.group_id = sg.id
                     WHERE gm.user_id = ?
                     """,
                     (user_id,)
                 ).fetchall()
-                
-                conflict_found = False
 
                 for group_meeting in group_meetings:
                     meeting_data = dict(group_meeting)
@@ -1320,13 +1297,14 @@ def schedule():
     for occurrence in session_occurrences:
         session_id = occurrence["id"]
 
-    if session_id not in grouped_sessions:
-        grouped_sessions[session_id] = {
-            "session": occurrence.copy(),
-            "occurrences": []
-        }
+        if session_id not in grouped_sessions:
+            grouped_sessions[session_id] = {
+                "session": occurrence.copy(),
+                "occurrences": []
+            }
 
-    grouped_sessions[session_id]["occurrences"].append(occurrence)
+        grouped_sessions[session_id]
+    ["occurrences"].append(occurrence)
 
     session_groups = list(grouped_sessions.values())
     
@@ -2373,9 +2351,13 @@ def login():
     if request.method == "POST":
         email = request.form.get("email")
         password = request.form.get("password")
-
+        
         if not email or not password:
-            return "Email and password are required", 400
+            return render_template(
+                "login.html",
+                error="Email and password are required.",
+                email=(email or ""),
+            ), 400
 
         email = email.strip().lower()
 
@@ -2388,7 +2370,11 @@ def login():
         conn.close()
 
         if user is None or not check_password_hash(user["password"], password):
-            return "Invalid email or password", 400
+            return render_template(
+                "login.html",
+                error="Invalid email or password. Please check them and try again.",
+                email=email,
+            ), 400
 
         if "email_verified" in user.keys() and not user["email_verified"]:
             # Right password, but the UTA email was never confirmed.

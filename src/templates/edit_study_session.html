@@ -10,25 +10,7 @@
 
 <body>
 
-<header class="topbar">
-    <div class="site-nav-wrap">
-        <a class="brand" href="/dashboard">StudyMore</a>
-
-        <nav id="site-nav">
-            <a href="/dashboard">Dashboard</a>
-            <a href="/search">Search Groups</a>
-            <a href="/create-group">Create Group</a>
-            <a href="/my-groups">My Groups</a>
-            <a href="/invitations">Invitations</a>
-            <a href="/study-request">Find My Match</a>
-            <a href="/availability">Availability</a>
-            <a href="/schedule" class="active">Schedule</a>
-            <a href="/profile">Profile</a>
-            <a href="/logout">Log Out</a>
-            <a href="{{ url_for('semesters.semesters') }}">Semesters</a>
-        </nav>
-    </div>
-</header>
+{% include "_nav.html" %}
 
 <main class="schedule-page">
 

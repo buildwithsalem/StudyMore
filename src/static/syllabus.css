@@ -1,0 +1,14 @@
+/* Syllabus upload and review pages. Colors inherit from the rest of the site. */
+.syl-form { display: grid; gap: 1rem; max-width: 640px; }
+.syl-form label { display: grid; gap: .35rem; }
+.syl-form textarea, .syl-form input[type="text"] { width: 100%; box-sizing: border-box; font: inherit; }
+.syl-note { font-size: .9rem; opacity: .8; margin: 0; }
+.syl-actions { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; margin-top: 1rem; }
+.syl-bulk { display: flex; gap: .5rem; margin: 0 0 .75rem; }
+.syl-table-wrap { overflow-x: auto; max-width: 100%; }
+.syl-table { border-collapse: collapse; width: 100%; min-width: 640px; }
+.syl-table th, .syl-table td { padding: .4rem .5rem; text-align: left; vertical-align: middle; border-bottom: 1px solid rgba(128, 128, 128, .3); }
+.syl-table input[type="text"], .syl-table input[type="date"], .syl-table select { width: 100%; box-sizing: border-box; font: inherit; }
+.syl-table input[type="checkbox"] { width: 1.25rem; height: 1.25rem; }
+.syl-plan { display: flex; gap: .6rem; align-items: flex-start; margin-top: 1.25rem; max-width: 640px; }
+.syl-plan input { margin-top: .25rem; }

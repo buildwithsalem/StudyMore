@@ -13,27 +13,7 @@
 
 <body>
 
-<header class="topbar">
-    <span class="brand">StudyMore</span>
-
-
-    <button type="button" class="menu-toggle" aria-label="Toggle menu" aria-controls="site-nav" aria-expanded="false" onclick="var n=document.getElementById('site-nav');n.classList.toggle('open');this.classList.toggle('open');this.setAttribute('aria-expanded', n.classList.contains('open'));">
-        <span></span><span></span><span></span>
-    </button>
-
-    <nav id="site-nav">
-        <a href="{{ url_for('dashboard.dashboard') }}">Dashboard</a>
-        <a href="{{ url_for('search.search') }}">Search Groups</a>
-        <a href="{{ url_for('create_group') }}">Create Group</a>
-        <a href="{{ url_for('my_groups') }}" class="active">My Groups</a>
-        <a href="{{ url_for('invitations.inbox') }}"{% if request.endpoint == 'invitations.inbox' %} class="active"{% endif %}>Invitations{% if pending_invite_count %}<span class="nav-badge">{{ pending_invite_count }}</span>{% endif %}</a>
-        <a href="{{ url_for('study_request') }}">Find My Match</a>
-        <a href="{{ url_for('availability') }}">Availability</a>
-        <a href="{{ url_for('semesters.semesters') }}">Semesters</a>
-        <a href="{{ url_for('profile.profile') }}">Profile</a>
-        <a href="{{ url_for('logout') }}">Log Out</a>
-    </nav>
-</header>
+{% include "_nav.html" %}
 <div class="crumbs"><a href="#" class="back-link" onclick="history.back();return false;">&larr; Back</a></div>
 
 
