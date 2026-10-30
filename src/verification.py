@@ -76,11 +76,40 @@ def mask_email(email):
     return f"{local[:2]}***@{domain}"
 
 
+def remember_demo_code(code, purpose):
+    """Beta testing only: keep the code in the visitor's own session so a banner can show it."""
+    session["demo_code"] = {"code": code, "purpose": purpose}
+
+
+@verification_bp.after_app_request
+def show_demo_code_banner(response):
+    info = session.get("demo_code")
+    if not info or not (request.endpoint or "").startswith(("verification.", "reset.")):
+        return response
+    if response.mimetype != "text/html" or response.direct_passthrough:
+        return response
+    html = response.get_data(as_text=True)
+    match = re.search(r"<body[^>]*>", html)
+    if not match:
+        return response
+    banner = (
+        '<div style="background:#fff3cd;color:#222;padding:12px 16px;text-align:center;'
+        'font:600 15px system-ui,sans-serif;border-bottom:2px solid #e0a800">'
+        "Beta test mode: no email is sent. Your %s code is "
+        '<span style="font-size:20px;letter-spacing:2px">%s</span></div>'
+        % (info["purpose"], info["code"])
+    )
+    response.set_data(html[: match.end()] + banner + html[match.end():])
+    return response
+
+
 def send_code_email(email, code):
     """Returns True if sent (or printed in demo mode), False if sending failed."""
     host = os.environ.get("STUDYMORE_SMTP_HOST")
     if not host:
         print(f"[StudyMore DEMO] Verification code for {email}: {code}", flush=True)
+        if os.environ.get("STUDYMORE_SHOW_CODES") == "1":
+            remember_demo_code(code, "verification")
         return True
 
     message = EmailMessage()
