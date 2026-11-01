@@ -1,0 +1,17 @@
+.discussion-main { width: min(900px, 100%); min-width: 0; }
+.discussion-navigation { display: flex; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem; }
+.discussion-content { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.7; }
+.discussion-main h1, .discussion-main h2, .discussion-main h3 { overflow-wrap: anywhere; }
+.discussion-form { display: grid; gap: .75rem; }
+.discussion-form textarea { width: 100%; min-width: 0; resize: vertical; font: inherit; }
+.discussion-form button { justify-self: start; }
+.discussion-main .form-section { margin-bottom: 1.5rem; }
+@media (max-width: 600px) {
+    .discussion-main { padding: 16px; }
+    .discussion-main .form-section { padding: 16px; }
+    .discussion-form button { width: 100%; }
+}
+
+.discussion-main .page-heading p { overflow-wrap: anywhere; }
+.discussion-main .secondary { max-width: 100%; white-space: normal; }
+.discussion-form textarea { background: var(--card, #fff); color: var(--ink); padding: 12px; }

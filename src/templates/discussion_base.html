@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Discussion Board | StudyMore</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='zine.css') }}">
+    {% include "_ui_head.html" %}
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+        <link rel="stylesheet" href="{{ url_for('static', filename='theme_motion.css') }}">
+    <script src="{{ url_for('static', filename='theme_motion.js') }}" defer></script>
+<link rel="stylesheet" href="{{ url_for('static', filename='discussion.css') }}"></head>
+
+<body>
+
+{% include "_nav.html" %}
+
+
+
+<main class="create-main discussion-main">
+    <nav class="discussion-navigation" aria-label="Discussion navigation">
+        {% if group %}<a class="back-link" href="{{ url_for('group_details', group_id=group.id) }}">&larr; Back to group</a>
+        <a class="back-link" href="{{ url_for('discussion.posts', group_id=group.id) }}">Discussion Board</a>
+        {% else %}<a class="back-link" href="{{ url_for('my_groups') }}">Back to my groups</a>{% endif %}
+    </nav>
+    {% block discussion_content %}{% endblock %}
+</main>
+{% include "_ui_foot.html" %}
+</body>
+</html>

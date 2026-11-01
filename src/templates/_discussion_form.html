@@ -1,0 +1,7 @@
+<form method="POST" action="{{ form_action }}" class="discussion-form">
+    <label for="content">{{ form_label }}</label>
+    <p id="content-hint" class="field-hint">1–{{ content_limit }} characters. Plain text only.</p>
+    {% if error %}<p id="content-error" class="message error" role="alert">{{ error }}</p>{% endif %}
+    <textarea id="content" name="content" rows="5" maxlength="{{ content_limit }}" required aria-describedby="content-hint{% if error %} content-error{% endif %}"{% if error %} aria-invalid="true"{% endif %}>{{ content }}</textarea>
+    <button type="submit" class="primary">{{ submit_label }}</button>
+</form>
