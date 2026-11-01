@@ -1,0 +1,19 @@
+{% extends "discussion_base.html" %}
+{% block discussion_content %}
+<div class="page-heading"><h1>Discussion Board</h1><p>{{ group.group_name }} &middot; {{ group.course_code }}</p><p>Ask questions, share ideas, and study together. Only group members can access this board.</p></div>
+<section class="form-section"><h2>Start a discussion</h2>
+{% set form_action = url_for('discussion.posts', group_id=group.id) %}
+{% set form_label = 'Your post' %}{% set submit_label = 'Post discussion' %}
+{% include "_discussion_form.html" %}
+</section>
+<section aria-labelledby="posts-heading"><h2 id="posts-heading">Discussions ({{ posts|length }})</h2>
+{% for post in posts %}
+<article class="form-section" id="post-{{ post.id }}">
+<h3>{{ post.author_name }}</h3>
+<p class="member-meta"><time datetime="{{ post.created_at|replace(' ', 'T') }}Z">{{ post.created_at }} UTC</time></p>
+<p class="discussion-content">{{ post.content }}</p>
+<a class="secondary" href="{{ url_for('discussion.post', group_id=group.id, post_id=post.id) }}">Open discussion &middot; {{ post.reply_count }} {{ 'reply' if post.reply_count == 1 else 'replies' }}</a>
+</article>
+{% else %}<div class="empty-state"><h3>No discussions yet</h3><p>Start the conversation with a question or a study tip using the form above.</p></div>{% endfor %}
+</section>
+{% endblock %}

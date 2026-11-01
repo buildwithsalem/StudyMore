@@ -42,6 +42,9 @@ app.register_blueprint(verification_bp)
 from invitations import invitations_bp, ensure_invitation_schema
 app.register_blueprint(invitations_bp)
 
+from discussion import discussion_bp, ensure_discussion_schema
+app.register_blueprint(discussion_bp)
+
 from semesters import semesters_bp
 app.register_blueprint(semesters_bp)
 
@@ -61,6 +64,7 @@ def init_db(database=None):
         _create_tables(conn)
         ensure_verification_schema(conn)
         ensure_invitation_schema(conn)
+        ensure_discussion_schema(conn)
         conn.commit()
     finally:
         conn.close()

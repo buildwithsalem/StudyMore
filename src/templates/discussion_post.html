@@ -1,0 +1,15 @@
+{% extends "discussion_base.html" %}
+{% block discussion_content %}
+<div class="page-heading"><h1>Group discussion</h1><p>{{ group.group_name }} &middot; {{ group.course_code }}</p></div>
+<article class="form-section"><h2>{{ post.author_name }}</h2><p class="member-meta"><time datetime="{{ post.created_at|replace(' ', 'T') }}Z">{{ post.created_at }} UTC</time></p><p class="discussion-content">{{ post.content }}</p></article>
+<section aria-labelledby="replies-heading"><h2 id="replies-heading">Replies ({{ replies|length }})</h2>
+{% for reply in replies %}
+<article class="form-section" id="reply-{{ reply.id }}"><h3>{{ reply.author_name }}</h3><p class="member-meta"><time datetime="{{ reply.created_at|replace(' ', 'T') }}Z">{{ reply.created_at }} UTC</time></p><p class="discussion-content">{{ reply.content }}</p></article>
+{% else %}<div class="empty-state"><h3>No replies yet</h3><p>Be the first to share an answer or an idea.</p></div>{% endfor %}
+</section>
+<section class="form-section"><h2>Add a reply</h2>
+{% set form_action = url_for('discussion.reply', group_id=group.id, post_id=post.id) %}
+{% set form_label = 'Your reply' %}{% set submit_label = 'Post reply' %}
+{% include "_discussion_form.html" %}
+</section>
+{% endblock %}

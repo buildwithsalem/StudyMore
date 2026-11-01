@@ -1900,3 +1900,15 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
   color: var(--ink); background: #fff; border: 1px solid var(--line); border-radius: 7px;
 }
 .invite-form input[type="email"]:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* Group Details: primary actions and membership controls are separate rows.
+   Specific selectors preserve spacing across the shared theme overrides. */
+.details-actions.group-details-actions { display: flex; flex-direction: column; gap: 24px; }
+.details-actions.group-details-actions > .group-action-row {
+  display: flex; flex-direction: row; flex-wrap: wrap; gap: 14px; align-items: center;
+}
+.details-actions.group-details-actions > .group-membership-row { gap: 16px; }
+.details-actions.group-details-actions .group-membership-row .membership-note { margin: 0; }
+@media (max-width: 600px) {
+  .group-details-actions .group-action-row > a { max-width: 100%; white-space: normal; }
+}

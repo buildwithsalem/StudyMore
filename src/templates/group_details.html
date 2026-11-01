@@ -127,12 +127,17 @@
         </section>
         {% endif %}
 
-        <div class="details-actions">
+        <div class="details-actions group-details-actions">
+            <div class="group-action-row">
+            {% if is_member %}
+            <a class="primary" href="{{ url_for('discussion.posts', group_id=group['id']) }}">Open Discussion Board</a>
+            {% endif %}
             <a href="{{ url_for('availability_heatmap', group_id=group['id']) }}"
        class="primary">
         View Availability Heatmap
              </a>
 
+            </div>
     {% if is_creator %}
 
     <div class="creator-status-control">
@@ -165,7 +170,7 @@
 
 {% elif is_member %}
 
-    <div>
+    <div class="group-membership-row">
         <span class="membership-note">✓ You joined this group</span>
 
         <form method="POST" action="{{ url_for('leave_group', group_id=group['id']) }}">
