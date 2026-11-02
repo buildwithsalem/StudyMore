@@ -1,0 +1,109 @@
+/* Notification Center. Loads after zine.css and ui.css and only uses their
+   theme variables, so it follows light mode, dark mode and the customizer. */
+
+.notification-center { max-width: 820px; }
+
+.notif-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 0 0 18px;
+}
+.notif-toolbar form { margin: 0; }
+
+/* All / Unread filter */
+.notif-filters { display: flex; gap: 8px; }
+.notif-filters a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 16px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration: none;
+}
+.notif-filters a span {
+  min-width: 24px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: rgba(127, 127, 160, 0.2);
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  text-align: center;
+}
+.notif-filters a.on { background: var(--blue); color: var(--on-blue); }
+.notif-filters a.on span { background: rgba(255, 255, 255, 0.28); }
+
+/* Cards */
+.notif-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+
+.notif-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  border: 2px solid var(--ink);
+  border-radius: var(--r, 16px);
+  background: var(--card);
+}
+.notif-card.is-unread { background: var(--tint); box-shadow: var(--shadow); }
+
+.notif-dot { flex: 0 0 10px; width: 10px; height: 10px; border-radius: 50%; }
+.notif-card.is-unread .notif-dot { background: var(--blue); }
+
+.notif-body { flex: 1; min-width: 0; }
+.notif-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.notif-message { margin: 6px 0 0; color: var(--ink); }
+.notif-card.is-unread .notif-message { font-weight: 700; }
+.notif-note { margin: 4px 0 0; font-size: 0.88rem; color: var(--muted); font-style: italic; }
+
+/* Kind tags */
+.notif-tag {
+  padding: 1px 9px;
+  border: 1.5px solid var(--ink);
+  border-radius: 999px;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--on, #12123a);
+}
+.notif-invite   { background: #c7d0ff; }
+.notif-accepted { background: var(--lime); }
+.notif-declined { background: var(--pink); }
+.notif-reply    { background: #ffc9a8; }
+.notif-update   { background: #e4e6ef; }
+
+.notif-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.notif-actions form { margin: 0; }
+.notif-actions button { white-space: nowrap; }
+
+.notif-more { margin-top: 14px; color: var(--muted); font-size: 0.9rem; text-align: center; }
+
+/* Read by screen readers, not shown */
+.notif-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .notif-card { flex-wrap: wrap; }
+  .notif-actions { width: 100%; justify-content: flex-start; padding-left: 24px; }
+}

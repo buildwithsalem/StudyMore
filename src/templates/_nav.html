@@ -30,6 +30,7 @@
             </div>
         </details>
 
+        <a href="{{ url_for('notifications.center') }}"{% if ep.startswith('notifications.') %} class="active"{% endif %}>Notifications{% if unread_notification_count %}<span class="nav-badge">{{ unread_notification_count }}</span>{% endif %}</a>
         <a href="{{ url_for('profile.profile') }}"{% if ep.startswith('profile.') %} class="active"{% endif %}>Profile</a>
         <a href="{{ url_for('logout') }}">Log Out</a>
     </nav>
