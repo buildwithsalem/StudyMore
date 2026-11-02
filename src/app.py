@@ -1056,6 +1056,8 @@ def schedule():
                     (user_id,)
                 ).fetchall()
 
+                conflict_found = False
+
                 for group_meeting in group_meetings:
                     meeting_data = dict(group_meeting)
 
