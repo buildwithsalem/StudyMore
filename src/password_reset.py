@@ -68,6 +68,9 @@ def send_reset_email(email, code):
     host = os.environ.get("STUDYMORE_SMTP_HOST")
     if not host:
         print(f"[StudyMore DEMO] Password reset code for {email}: {code}", flush=True)
+        if os.environ.get("STUDYMORE_SHOW_RESET_CODES") == "1":
+            from verification import remember_demo_code
+            remember_demo_code(code, "password reset")
         return True
 
     message = EmailMessage()
