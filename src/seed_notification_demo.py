@@ -68,21 +68,24 @@ def main():
             s["user_id"] = user_id
             s["user_name"] = name
 
-    def newest_id(table):
-        return conn.execute(f"SELECT MAX(id) FROM {table}").fetchone()[0]
+    def newest_invitation_id():
+        return conn.execute("SELECT MAX(id) FROM group_invitations").fetchone()[0]
+
+    def newest_post_id():
+        return conn.execute("SELECT MAX(id) FROM discussion_posts").fetchone()[0]
 
     # Morgan Lee (7) invites Demo Student to Linked List Practice (group 7), then cancels.
     act_as(7, "Morgan Lee")
     client.post("/group/7/invite", data={"email": "demo@example.com"})
-    cancelled_invite = newest_id("group_invitations")
+    cancelled_invite = newest_invitation_id()
     client.post(f"/invitations/{cancelled_invite}/cancel")
 
     # Demo Student invites Morgan Lee (declines) and Taylor Brooks (accepts).
     act_as(1, "Demo Student")
     client.post(f"/group/{demo_group}/invite", data={"email": "morgan@example.com"})
-    morgan_invite = newest_id("group_invitations")
+    morgan_invite = newest_invitation_id()
     client.post(f"/group/{demo_group}/invite", data={"email": "taylor@example.com"})
-    taylor_invite = newest_id("group_invitations")
+    taylor_invite = newest_invitation_id()
     act_as(7, "Morgan Lee")
     client.post(f"/invitations/{morgan_invite}/decline")
     act_as(6, "Taylor Brooks")
@@ -92,7 +95,7 @@ def main():
     act_as(1, "Demo Student")
     client.post("/group/3/discussions", data={
         "content": "Can someone explain integration by parts with a table? I keep mixing up the signs."})
-    post_id = newest_id("discussion_posts")
+    post_id = newest_post_id()
     act_as(8, "Casey Nguyen")
     client.post(f"/group/3/discussions/{post_id}/replies", data={
         "content": "Alternate plus and minus down the column. Bring your notes Saturday and I will show you."})

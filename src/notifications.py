@@ -41,11 +41,11 @@ from flask import (
 
 from db import get_db_connection
 from invitations import (
-    INVITATION_SELECT,
     TIME_FORMAT,
     ensure_invitation_schema,
     invitation_status,
     is_member,
+    load_invitation,
 )
 
 notifications_bp = Blueprint("notifications", __name__, template_folder="templates")
@@ -127,7 +127,7 @@ def time_ago(created_at, now=None):
 
 def invitation_state(conn, invitation_id, now=None):
     """pending / accepted / declined / cancelled / expired, using the invitation rules."""
-    row = conn.execute(INVITATION_SELECT + " WHERE gi.id = ?", (invitation_id,)).fetchone()
+    row = load_invitation(conn, invitation_id)
     return invitation_status(row, now) if row is not None else "cancelled"
 
 
