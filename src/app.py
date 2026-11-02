@@ -57,6 +57,9 @@ app.register_blueprint(syllabus_bp)
 from ui import ui_bp
 app.register_blueprint(ui_bp)
 
+from notifications import notifications_bp
+app.register_blueprint(notifications_bp)
+
 def init_db(database=None):
     """Create any missing tables in `database` (default: app.config["DATABASE"])."""
     conn = sqlite3.connect(database or app.config["DATABASE"])
