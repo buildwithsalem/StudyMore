@@ -57,6 +57,16 @@
                     placeholder="Describe what your group plans to study."
                     required>{{ form['description'] or '' }}</textarea>
             </label>
+
+            <label for="is_private" class="privacy-toggle">
+                <span>
+                    <input type="checkbox" id="is_private" name="is_private" value="1"
+                           {% if form['is_private'] %}checked{% endif %}>
+                    <strong>Private group (invite only)</strong>
+                </span>
+                <small>Hidden from search, matches and suggestions. People can only join if you invite them.</small>
+            </label>
+
         </div>
 
 

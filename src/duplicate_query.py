@@ -213,6 +213,8 @@ GROUPS_IN_COURSE_SQL = """
     FROM study_groups AS g
     LEFT JOIN group_memberships AS m ON m.group_id = g.id
     WHERE REPLACE(UPPER(g.course_code), ' ', '') = ?
+      AND (COALESCE(g.is_private, 0) = 0
+           OR g.id IN (SELECT group_id FROM group_memberships WHERE user_id = ?))
     GROUP BY g.id
 """
 
@@ -221,7 +223,8 @@ def groups_in_course(conn, course_code, user_id=None):
     """Every group in the course, with its member count. Course spacing and case ignored."""
     return conn.execute(
         GROUPS_IN_COURSE_SQL,
-        (user_id if user_id is not None else -1, normalize_course_code(course_code)),
+        (user_id if user_id is not None else -1, normalize_course_code(course_code),
+         user_id if user_id is not None else -1),
     ).fetchall()
 
 

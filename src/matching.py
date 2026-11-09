@@ -136,6 +136,7 @@ def find_group_matches(conn, study_request):
         LEFT JOIN group_memberships gm
             ON gm.group_id = sg.id
         WHERE LOWER(sg.status) = 'open'
+          AND COALESCE(sg.is_private, 0) = 0
           AND UPPER(sg.course_code) = UPPER(?)
         GROUP BY sg.id
         HAVING COUNT(gm.id) < sg.max_members
