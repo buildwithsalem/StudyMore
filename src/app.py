@@ -501,8 +501,14 @@ def group_details(group_id):
     is_member = membership is not None
     is_creator = group["creator_user_id"] == user_id
     if group["is_private"] and not is_member and not is_creator:
-        conn.close()
-        return "Study group not found", 404
+        invited_to_private = conn.execute(
+            "SELECT 1 FROM group_invitations "
+            "WHERE group_id = ? AND invitee_id = ? AND status = 'pending'",
+            (group_id, user_id),
+        ).fetchone()
+        if invited_to_private is None:
+            conn.close()
+            return "Study group not found", 404
 
     display_status = derive_display_status(
         group["status"], member_count, group["max_members"],
