@@ -124,6 +124,12 @@ def _create_tables(conn):
             ADD COLUMN creator_user_id INTEGER
         """)
 
+    if "is_private" not in existing_columns:
+        cursor.execute("""
+            ALTER TABLE study_groups
+            ADD COLUMN is_private INTEGER NOT NULL DEFAULT 0
+        """)
+
     # Group memberships - Join/Leave/My Groups
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS group_memberships (
@@ -379,6 +385,7 @@ def create_group():
 
         cursor = connection.execute("""
             INSERT INTO study_groups (
+                is_private,
                 creator_user_id,
                 group_name,
                 course_code,
@@ -392,8 +399,9 @@ def create_group():
                 meeting_link,
                 max_members
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
+            1 if request.form.get("is_private") else 0,
             user_id,
             group_name,
             course_code,
@@ -492,6 +500,15 @@ def group_details(group_id):
 
     is_member = membership is not None
     is_creator = group["creator_user_id"] == user_id
+    if group["is_private"] and not is_member and not is_creator:
+        invited_to_private = conn.execute(
+            "SELECT 1 FROM group_invitations "
+            "WHERE group_id = ? AND invitee_id = ? AND status = 'pending'",
+            (group_id, user_id),
+        ).fetchone()
+        if invited_to_private is None:
+            conn.close()
+            return "Study group not found", 404
 
     display_status = derive_display_status(
         group["status"], member_count, group["max_members"],
@@ -614,11 +631,12 @@ def edit_group(group_id):
         UPDATE study_groups
         SET group_name = ?, description = ?, meeting_type = ?,
             meeting_date = ?, meeting_time = ?, location = ?,
-            meeting_link = ?, max_members = ?
+            meeting_link = ?, max_members = ?, is_private = ?
         WHERE id = ?
         """,
         (group_name, description, meeting_type, meeting_date, meeting_time,
-         location, meeting_link, max_members, group_id)
+         location, meeting_link, max_members,
+         1 if form.get("is_private") else 0, group_id)
     )
     conn.commit()
     conn.close()
@@ -685,6 +703,10 @@ def join_group(group_id):
     if group is None:
         conn.close()
         return "Study group not found", 404
+
+    if group["is_private"] and group["creator_user_id"] != user_id:
+        conn.close()
+        return "This group is private. Ask the creator for an invitation.", 403
 
     member_count = conn.execute("""
         SELECT COUNT(*)
