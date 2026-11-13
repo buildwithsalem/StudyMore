@@ -164,7 +164,7 @@ def build_search_query(filters):
         "LEFT JOIN group_memberships AS m ON m.group_id = g.id",
     ]
 
-    where = []
+    where = ["COALESCE(g.is_private, 0) = 0"]
     having = []
     params = []
 
