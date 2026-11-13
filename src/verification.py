@@ -77,11 +77,11 @@ def mask_email(email):
 
 
 def send_code_email(email, code):
-    """Returns True if sent (or printed in demo mode), False if sending failed."""
+    """Returns True if the email was sent, False if sending failed."""
     host = os.environ.get("STUDYMORE_SMTP_HOST")
     if not host:
-        print(f"[StudyMore DEMO] Verification code for {email}: {code}", flush=True)
-        return True
+       current_app.logger.error("SMTP is not configured. Verification email was not sent.")
+       return False
 
     message = EmailMessage()
     message["Subject"] = "Your StudyMore verification code"
