@@ -22,7 +22,8 @@
 
 <main class="create-main profile-main">
 
-    <section class="profile-header">
+    {% set pc = avatar_colors.get(values.avatar_color) if avatar_colors else None %}
+    <section class="profile-header"{% if pc %} style="background: {{ pc }};"{% endif %}>
         {% if avatar_url %}<img class="profile-avatar" src="{{ avatar_url }}" alt="Your profile photo">{% else %}<div class="profile-avatar">{{ initials }}</div>{% endif %}
         <div class="profile-headline">
             <h1>{{ values.display_name or "Your profile" }}</h1>
@@ -56,8 +57,8 @@
 
     <form method="POST" class="create-form" enctype="multipart/form-data">
 
-        <section class="form-section">
-            <h2>About you</h2>
+        <details class="form-section" open>
+            <summary><h2>About you</h2></summary>
 
             <label for="display_name">
                 <span>Display name <span class="required">*</span></span>
@@ -73,17 +74,18 @@
             </label>
 
             <fieldset class="avatar-picker">
-                <legend>Avatar color</legend>
+                <legend>Profile color</legend>
                 <div class="swatch-row">
                     {% for key, hex in avatar_colors.items() %}
                         <label class="swatch">
-                            <input type="radio" name="avatar_color" value="{{ key }}"
+                            <input type="radio" name="avatar_color" value="{{ key }}" data-hex="{{ hex }}"
                                    {% if values.avatar_color == key %}checked{% endif %}>
                             <span class="swatch-dot" style="background: {{ hex }};" title="{{ key|title }}"></span>
                             <span class="sr-only">{{ key|title }}</span>
                         </label>
                     {% endfor %}
                 </div>
+                <small class="field-hint">Colors your profile banner. Pick one and watch the top of the page.</small>
             </fieldset>
 
             <div class="avatar-upload">
@@ -100,10 +102,10 @@
                 <span>Show my class year, major, and study style to members of groups I join</span>
             </label>
             <small class="field-hint">Your name always shows. Your email is never shown.</small>
-        </section>
+        </details>
 
-        <section class="form-section">
-            <h2>Academics</h2>
+        <details class="form-section" open>
+            <summary><h2>Academics</h2></summary>
 
             <div class="form-grid">
                 <label for="major">
@@ -143,10 +145,10 @@
                        placeholder="Example: CSE 3311, MATH 1426, ENGL 1302" value="{{ values.courses }}">
                 <small class="field-hint">Separate courses with commas.</small>
             </label>
-        </section>
+        </details>
 
-        <section class="form-section">
-            <h2>How you like to study</h2>
+        <details class="form-section" open>
+            <summary><h2>How you like to study</h2></summary>
 
             <div class="form-grid">
                 <label for="study_style">
@@ -195,10 +197,10 @@
                     {% endfor %}
                 </div>
             </fieldset>
-        </section>
+        </details>
 
-        <section class="form-section">
-            <h2>Help and interests</h2>
+        <details class="form-section" open>
+            <summary><h2>Help and interests</h2></summary>
 
             <div class="form-grid">
                 <label for="can_help">
@@ -220,26 +222,46 @@
                        placeholder="Example: Society of Women Engineers, hackathons" value="{{ values.interests }}">
                 <small class="field-hint">Separate items with commas.</small>
             </label>
-        </section>
+        </details>
 
-        <section class="form-section">
-            <h2>Your study schedule</h2>
+        <details class="form-section" open>
+            <summary><h2>Your study schedule</h2></summary>
             <p class="section-note">Your weekly availability powers your study matches and group heatmaps.</p>
             <div class="profile-links">
                 <a class="secondary" href="{{ url_for('availability') }}">Update availability</a>
                 <a class="secondary" href="{{ url_for('study_request') }}">Find my match</a>
                 <a class="secondary" href="{{ url_for('my_groups') }}">My groups</a>
             </div>
-        </section>
+        </details>
 
         <button type="submit" class="primary create-button">Save Profile</button>
 
     </form>
 
-    <p class="delete-account-link" style="text-align:center;margin:32px 0 8px;">
-        <a href="/account/delete" style="color:#b3261e;">Delete my account</a>
-    </p>
+    <section class="form-section danger-zone">
+        <h2>Danger zone</h2>
+        <p class="section-note">Deleting your account removes your profile, group memberships, invitations and notifications. Groups you created pass to their longest-standing member. This cannot be undone.</p>
+        <a class="secondary danger-link" href="/account/delete">Delete my account</a>
+    </section>
+
 </main>
+
+<script>
+(function () {
+    var header = document.querySelector('.profile-header');
+    document.querySelectorAll('.avatar-picker input[name="avatar_color"]').forEach(function (radio) {
+        radio.addEventListener('change', function () {
+            if (header && radio.dataset.hex) { header.style.background = radio.dataset.hex; }
+        });
+    });
+    /* phones: only the first section starts open, so the page isn't one endless scroll */
+    if (window.innerWidth < 720) {
+        document.querySelectorAll('details.form-section').forEach(function (d, i) {
+            if (i > 0) { d.removeAttribute('open'); }
+        });
+    }
+})();
+</script>
 
 {% include "_ui_foot.html" %}
 </body>
