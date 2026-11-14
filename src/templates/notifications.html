@@ -39,6 +39,8 @@
             <input type="hidden" name="show" value="{{ show }}">
             <button type="submit" class="secondary">Mark all as read</button>
         </form>
+        {% elif total %}
+        <button type="button" class="secondary" disabled title="You have no unread notifications">Mark all as read</button>
         {% endif %}
     </div>
 

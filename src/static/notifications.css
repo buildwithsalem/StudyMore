@@ -12,6 +12,7 @@
   margin: 0 0 18px;
 }
 .notif-toolbar form { margin: 0; }
+.notif-toolbar button:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* All / Unread filter */
 .notif-filters { display: flex; gap: 8px; }
