@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% if deleted %}Account deleted{% else %}Delete account{% endif %} | StudyMore</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='zine.css') }}">
+    {% include "_ui_head.html" %}
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='theme_motion.css') }}">
+    <script src="{{ url_for('static', filename='theme_motion.js') }}" defer></script>
+</head>
+
+<body>
+
+{% if not deleted %}
+{% include "_nav.html" %}
+<div class="crumbs"><a href="/profile" class="back-link">&larr; Back to profile</a></div>
+{% endif %}
+
+<main class="create-main">
+
+{% if deleted %}
+
+    <div class="page-heading">
+        <h1>Your account has been deleted</h1>
+        <p>Your profile, group memberships, invitations and notifications are gone. Thanks for studying with StudyMore.</p>
+    </div>
+    <p><a class="primary create-button" href="{{ url_for('login') }}" style="display:inline-block;text-align:center;text-decoration:none;">Back to the home page</a></p>
+
+{% else %}
+
+    <div class="page-heading">
+        <h1>Delete your account</h1>
+        <p>This cannot be undone.</p>
+    </div>
+
+    {% if error %}
+    <div class="message error" role="alert">{{ error }}</div>
+    {% endif %}
+
+    <form method="POST" class="create-form" autocomplete="off">
+        <div class="form-section">
+            <p>Deleting your account will:</p>
+            <ul>
+                <li>Remove your profile, photo, semester items, invitations and notifications</li>
+                <li>Remove you from every study group</li>
+                <li>Pass any group you created to its longest-standing member, or delete it if you were the only one in it</li>
+            </ul>
+
+            <label for="password">
+                <span>Your password <span class="required">*</span></span>
+                <input type="password" id="password" name="password" required>
+            </label>
+
+            <label for="confirm">
+                <span>Type DELETE to confirm <span class="required">*</span></span>
+                <input type="text" id="confirm" name="confirm" placeholder="DELETE" required>
+            </label>
+        </div>
+
+        <button type="submit" class="primary create-button" style="background:#b3261e;border-color:#b3261e;">
+            Permanently delete my account
+        </button>
+    </form>
+
+{% endif %}
+
+</main>
+
+{% include "_ui_foot.html" %}
+</body>
+</html>
