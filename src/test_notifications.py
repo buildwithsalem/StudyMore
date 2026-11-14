@@ -230,6 +230,28 @@ class TestListAndEmptyStates(NotificationBase):
         self.assertIn("all caught up", html)
         self.assertIn("See all notifications", html)
 
+    def test_unread_filter_only_shows_my_own_notifications(self):
+        self.add_note(2, message="Unread for Student Two")
+        self.add_note(3, message="Unread for Student Three")
+        self.login(2)
+        html = self.page("unread")
+        self.assertIn("Unread for Student Two", html)
+        self.assertNotIn("Unread for Student Three", html)
+        self.login(3)
+        html = self.page("unread")
+        self.assertIn("Unread for Student Three", html)
+        self.assertNotIn("Unread for Student Two", html)
+
+    def test_mark_all_read_button_is_disabled_when_nothing_is_unread(self):
+        self.add_note(2, is_read=1)
+        self.login(2)
+        html = self.page()
+        self.assertIn("disabled", html.split("notif-toolbar")[1].split("</div>")[0])
+        self.assertNotIn('action="/notifications/read-all"', html)
+        self.add_note(2)
+        html = self.page()
+        self.assertIn('action="/notifications/read-all"', html)
+
     def test_unknown_filter_falls_back_to_all(self):
         self.add_note(2, message="Shown anyway", is_read=1)
         self.login(2)
