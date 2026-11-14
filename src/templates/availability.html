@@ -58,7 +58,7 @@
                     <div class="grid-header time-header">Time</div>
 
                     {% for day in days %}
-                        <div class="grid-header">{{ day }}</div>
+                        <div class="grid-header"><span class="d-full">{{ day }}</span><span class="d-short">{{ day[:3] }}</span></div>
                     {% endfor %}
 
                     {% for slot in time_slots %}
