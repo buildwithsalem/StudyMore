@@ -33,7 +33,7 @@ class VerificationBase(unittest.TestCase):
         os.close(self.db_fd)
         os.unlink(self.db_path)
 
-    def register(self, email="new@mavs.uta.edu", password="pw12345"):
+    def register(self, email="new@mavs.uta.edu", password="StudyMore2026!"):
         return self.client.post("/register", data={
             "name": "New Student", "email": email,
             "password": password, "confirm_password": password})
@@ -51,6 +51,43 @@ class VerificationBase(unittest.TestCase):
 
 
 class TestRegisterFlow(VerificationBase):
+
+    def test_weak_passwords_are_rejected(self):
+        weak_passwords = [
+            "Short1!",
+            "lowercase123!",
+            "UPPERCASE123!",
+            "NoNumbers!",
+            "NoSpecial123",
+        ]
+
+        for password in weak_passwords:
+            with self.subTest(password=password):
+                response = self.register(password=password)
+                self.assertEqual(response.status_code, 400)
+                self.assertIn(b"Password must be", response.data)
+
+        self.assertIsNone(self.query("SELECT id FROM users"))
+        self.assertEqual(self.sent, [])
+
+
+    def test_failed_email_removes_new_account(self):
+        with patch.object(verification, "send_code_email", return_value=False):
+            response = self.register()
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn(b"couldn&#39;t send", response.data)
+        self.assertIsNone(
+            self.query(
+                "SELECT id FROM users WHERE email = ?",
+                ("new@mavs.uta.edu",)
+            )
+        )
+        self.assertIsNone(
+            self.query("SELECT * FROM email_verifications")
+        )
+        self.assertIsNone(self.logged_in())
+
     def test_non_uta_emails_rejected(self):
         for email in ("a@gmail.com", "a@uta.edu", "a@mavs.uta.edu.evil.com",
                       "a@b@mavs.uta.edu", "@mavs.uta.edu"):
@@ -166,7 +203,7 @@ class TestLogin(VerificationBase):
     def test_unverified_user_cannot_log_in_but_is_sent_to_verify(self):
         self.register()
         self.client.get("/logout")
-        r = self.client.post("/login", data={"email": "new@mavs.uta.edu", "password": "pw12345"})
+        r = self.client.post("/login", data={"email": "new@mavs.uta.edu", "password": "StudyMore2026!"})
         self.assertIn("/verify", r.headers["Location"])
         self.assertIsNone(self.logged_in())
         self.assertEqual(self.client.get("/dashboard").status_code, 302)
@@ -183,7 +220,7 @@ class TestLogin(VerificationBase):
         self.register()
         self.client.post("/verify", data={"code": self.sent[0][1]})
         self.client.get("/logout")
-        r = self.client.post("/login", data={"email": "new@mavs.uta.edu", "password": "pw12345"})
+        r = self.client.post("/login", data={"email": "new@mavs.uta.edu", "password": "StudyMore2026!"})
         self.assertIn("/dashboard", r.headers["Location"])
         self.assertIsNotNone(self.logged_in())
 
@@ -202,12 +239,13 @@ class TestLogin(VerificationBase):
 
 
 class TestSending(unittest.TestCase):
-    def test_demo_mode_prints_code(self):
-        with patch.dict(os.environ, {}, clear=False):
-            os.environ.pop("STUDYMORE_SMTP_HOST", None)
-            with patch("builtins.print") as p:
-                self.assertTrue(verification.send_code_email("a@mavs.uta.edu", "123456"))
-        self.assertIn("123456", str(p.call_args))
+    def test_missing_smtp_config_returns_false(self):
+        with patch.dict(os.environ, {"STUDYMORE_SMTP_HOST": ""}):
+            with app_module.app.app_context():
+                self.assertFalse(
+                    verification.send_code_email("a@mavs.uta.edu", "123456")
+                )
+
 
     def test_smtp_failure_returns_false(self):
         with patch.dict(os.environ, {"STUDYMORE_SMTP_HOST": "127.0.0.1", "STUDYMORE_SMTP_PORT": "1"}):

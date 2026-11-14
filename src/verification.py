@@ -75,7 +75,14 @@ def mask_email(email):
         return f"{local[:1]}***@{domain}"
     return f"{local[:2]}***@{domain}"
 
-
+def is_strong_password(password):
+    return (
+        len(password) >= 8
+        and any(c.isupper() for c in password)
+        and any(c.islower() for c in password)
+        and any(c.isdigit() for c in password)
+        and any(not c.isalnum() and not c.isspace() for c in password)
+    )
 def remember_demo_code(code, purpose):
     """Beta testing only: keep the code in the visitor's own session so a banner can show it."""
     session["demo_code"] = {"code": code, "purpose": purpose}
@@ -83,6 +90,8 @@ def remember_demo_code(code, purpose):
 
 @verification_bp.after_app_request
 def show_demo_code_banner(response):
+    if os.environ.get("STUDYMORE_SHOW_CODES") != "1":
+        return response
     info = session.get("demo_code")
     if not info or not (request.endpoint or "").startswith(("verification.", "reset.")):
         return response
@@ -104,13 +113,16 @@ def show_demo_code_banner(response):
 
 
 def send_code_email(email, code):
-    """Returns True if sent (or printed in demo mode), False if sending failed."""
+    """Returns True if the email was sent, False if sending failed."""
     host = os.environ.get("STUDYMORE_SMTP_HOST")
     if not host:
-        print(f"[StudyMore DEMO] Verification code for {email}: {code}", flush=True)
         if os.environ.get("STUDYMORE_SHOW_CODES") == "1":
+            print(f"[StudyMore DEMO] Verification code for {email}: {code}", flush=True)
             remember_demo_code(code, "verification")
-        return True
+            return True
+
+        current_app.logger.error("SMTP is not configured. Verification email was not sent.")
+        return False
 
     message = EmailMessage()
     message["Subject"] = "Your StudyMore verification code"
@@ -130,7 +142,7 @@ def send_code_email(email, code):
                 smtp.login(user, os.environ.get("STUDYMORE_SMTP_PASSWORD", ""))
             smtp.send_message(message)
         return True
-    except (OSError, smtplib.SMTPException) as exc:
+    except (OSError, ValueError, smtplib.SMTPException) as exc:
         current_app.logger.error("Could not send verification email: %s", exc)
         return False
 

@@ -121,7 +121,11 @@ def test_reads_txt():
         ("notes.exe", b"x"),
         ("s.docx", b"not a zip"),
         ("s.txt", b"   \n  "),
-        ("big.txt", b"a" * (5 * 1024 * 1024 + 1)),
+        pytest.param(
+            "big.txt",
+            b"a" * (5 * 1024 * 1024 + 1),
+            id="oversized-text-file",
+        ),
     ],
 )
 def test_bad_files_raise_friendly_error(name, data):

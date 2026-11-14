@@ -35,6 +35,7 @@ from verification import (
     MAX_ATTEMPTS,
     RESEND_COOLDOWN_SECONDS,
     ensure_verification_schema,
+    is_strong_password,
     mask_email,
 )
 
@@ -67,11 +68,14 @@ def send_reset_email(email, code):
     """Returns True if sent (or printed in demo mode), False if sending failed."""
     host = os.environ.get("STUDYMORE_SMTP_HOST")
     if not host:
-        print(f"[StudyMore DEMO] Password reset code for {email}: {code}", flush=True)
-        if os.environ.get("STUDYMORE_SHOW_RESET_CODES") == "1":
+        if os.environ.get("STUDYMORE_SHOW_CODES") == "1":
+            print(f"[StudyMore DEMO] Password reset code for {email}: {code}", flush=True)
             from verification import remember_demo_code
             remember_demo_code(code, "password reset")
-        return True
+            return True
+
+        current_app.logger.error("SMTP is not configured. Password reset email was not sent.")
+        return False
 
     message = EmailMessage()
     message["Subject"] = "Your StudyMore password reset code"
@@ -177,8 +181,12 @@ def reset_password():
     password = request.form.get("password") or ""
     confirm = request.form.get("confirm_password") or ""
 
-    if len(password) < MIN_PASSWORD:
-        return _render_reset(email, error=f"Your new password must be at least {MIN_PASSWORD} characters.", status=400)
+    if not is_strong_password(password):
+        return _render_reset(
+            email,
+            error="Password must be at least 8 characters and include an uppercase letter, a lowercase letter, a number, and a special character.",
+            status=400
+    )
     if password != confirm:
         return _render_reset(email, error="The two passwords do not match.", status=400)
 

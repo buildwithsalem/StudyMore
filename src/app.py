@@ -15,6 +15,10 @@ from search_query import meeting_has_passed
 from datetime import datetime, timedelta
 
 import sqlite3
+from dotenv import load_dotenv
+from pathlib import Path
+
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 app = Flask(__name__)
 # One database setting (app.config["DATABASE"]) shared by every route and blueprint.
@@ -36,7 +40,7 @@ app.register_blueprint(duplicate_bp)
 app.register_blueprint(dashboard_bp)
 from verification import (
     verification_bp, ensure_verification_schema, issue_code,
-    issue_code_if_due, is_uta_email,
+    issue_code_if_due, is_uta_email, is_strong_password,
 )
 app.register_blueprint(verification_bp)
 from invitations import invitations_bp, ensure_invitation_schema
@@ -2332,8 +2336,8 @@ def register():
     if request.method == "POST":
         name = request.form.get("name", "").strip()
         email = request.form.get("email", "").strip().lower()
-        password = request.form.get("password", "").strip()
-        confirm_password = request.form.get("confirm_password", "").strip()
+        password = request.form.get("password", "")
+        confirm_password = request.form.get("confirm_password", "")
 
         if not name or not email or not password or not confirm_password:
             return register_error("Name, email, password, and confirm password are required", name, email)
@@ -2345,6 +2349,14 @@ def register():
 
         if password != confirm_password:
             return register_error("Password and confirmation do not match", name, email)
+        if not is_strong_password(password):
+            return register_error(
+                "Password must be at least 8 characters and include "
+                "an uppercase letter, a lowercase letter, a number, "
+                "and a special character.",
+                name, email
+            )
+
 
         conn = get_db_connection()
         conn.row_factory = sqlite3.Row
@@ -2370,11 +2382,24 @@ def register():
             conn.rollback()
             conn.close()
             return register_error("An account with that email already exists", name, email)
-
         conn.commit()
         new_user_id = cursor.lastrowid
-        issue_code(conn, new_user_id, email)
+
+        email_sent = issue_code(conn, new_user_id, email)
+
+        if not email_sent:
+            conn.execute("DELETE FROM email_verifications WHERE user_id = ?", (new_user_id,))
+            conn.execute("DELETE FROM users WHERE id = ? AND email_verified = 0", (new_user_id,))
+            conn.commit()
+            conn.close()
+            return register_error(
+                "We couldn't send your verification email. "
+                "Please try again later or contact support.",
+                name, email
+            )
+
         conn.close()
+
 
         # Not logged in yet: the student has to confirm the code first.
         session.pop("user_id", None)

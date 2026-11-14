@@ -20,7 +20,7 @@ class ShowCodesTests(unittest.TestCase):
             os.environ.pop("STUDYMORE_SMTP_HOST", None)
             os.environ.pop("STUDYMORE_SHOW_CODES", None)
             with make_app().test_request_context("/"):
-                self.assertTrue(verification.send_code_email("a@mavs.uta.edu", "123456"))
+                self.assertFalse(verification.send_code_email("a@mavs.uta.edu", "123456"))
                 self.assertNotIn("demo_code", session)
 
     def test_switch_on_stores_code(self):
@@ -31,6 +31,9 @@ class ShowCodesTests(unittest.TestCase):
                 self.assertEqual(session["demo_code"]["code"], "123456")
 
     def test_banner_appears_on_verify_pages_only(self):
+        self.enterContext(
+            patch.dict(os.environ, {"STUDYMORE_SHOW_CODES": "1"})
+        )
         page = Response("<html><body><p>hi</p></body></html>", mimetype="text/html")
         with make_app().test_request_context("/"):
             verification.remember_demo_code("654321", "verification")

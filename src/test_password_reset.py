@@ -35,7 +35,7 @@ def ask(client, email="test@example.com"):
     return client.post("/forgot-password", data={"email": email})
 
 
-def reset(client, code, password="newpass123", confirm=None):
+def reset(client, code, password="NewPass123!", confirm=None):
     return client.post(
         "/reset-password",
         data={"code": code, "password": password, "confirm_password": confirm or password},
@@ -85,7 +85,7 @@ def test_correct_code_changes_password(ctx):
     assert resp.status_code == 302 and "/login" in resp.headers["Location"]
     conn = db(path)
     row = conn.execute("SELECT password FROM users WHERE email = 'test@example.com'").fetchone()
-    assert check_password_hash(row["password"], "newpass123")
+    assert check_password_hash(row["password"], "NewPass123!")
     assert not check_password_hash(row["password"], "test123")
     assert conn.execute("SELECT COUNT(*) FROM password_resets").fetchone()[0] == 0
     with client.session_transaction() as s:
