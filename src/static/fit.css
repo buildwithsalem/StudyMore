@@ -1,0 +1,79 @@
+/* StudyMore fit.css
+   1) Makes every page fit its container and flex to any screen size.
+   2) Adds a little whimsy (motion respects "reduce motion").
+   Loaded on every page through templates/_ui_head.html. Delete the link to undo. */
+
+/* ---------- 1. FIT ---------- */
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; scroll-behavior: smooth; }
+body { overflow-wrap: anywhere; padding-bottom: env(safe-area-inset-bottom); }
+
+img, video, canvas { max-width: 100%; height: auto; }
+svg, iframe { max-width: 100%; }
+main, section, article, form, fieldset, label, div { min-width: 0; }
+input, select, textarea, button { max-width: 100%; font-family: inherit; }
+input:not([type="checkbox"]):not([type="radio"]), select, textarea { width: 100%; }
+textarea { resize: vertical; }
+pre, code { white-space: pre-wrap; overflow-wrap: anywhere; }
+h1, h2, h3 { overflow-wrap: anywhere; }
+h1 { font-size: clamp(1.6rem, 5.5vw, 2.6rem); }
+h2 { font-size: clamp(1.3rem, 4.2vw, 1.9rem); }
+
+@media (max-width: 720px) {
+    main, [class$="-main"] { padding-left: 16px; padding-right: 16px; }
+
+    /* 16px stops iPhones zooming in when a field is tapped */
+    input, select, textarea { font-size: 16px; }
+
+    /* thumb-sized tap targets */
+    button, [type="submit"], .primary, a.button, .btn { min-height: 44px; }
+    nav a, nav button { min-height: 40px; }
+
+    /* multi-column layouts stack into one column */
+    [class*="grid"] { grid-template-columns: minmax(0, 1fr) !important; }
+    [class*="row"], [class*="actions"], [class*="toolbar"], [class*="filters"], nav ul { flex-wrap: wrap; }
+    [class*="row"] > *, [class*="actions"] > * { flex: 1 1 220px; }
+
+    /* wide tables scroll sideways inside themselves instead of pushing the page */
+    table { display: block; max-width: 100%; overflow-x: auto; }
+
+    /* keep the floating feedback button from covering the last button on a page */
+    body { padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
+    .sm-feedback { max-width: calc(100vw - 24px); }
+}
+
+@media (max-width: 380px) {
+    main, [class$="-main"] { padding-left: 12px; padding-right: 12px; }
+}
+
+/* ---------- 2. WHIMSY ---------- */
+::selection { background: #ffd966; color: #1c1c1c; }
+
+:focus-visible { outline: 3px dashed currentColor; outline-offset: 3px; }
+
+.primary, [type="submit"], .create-button, .sm-feedback, a.button, .btn {
+    transition: transform .18s cubic-bezier(.34, 1.56, .64, 1), box-shadow .18s ease;
+}
+.primary:hover, [type="submit"]:hover, .create-button:hover, .sm-feedback:hover, a.button:hover, .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 14px rgba(0, 0, 0, .18);
+}
+.primary:active, [type="submit"]:active, .create-button:active, .sm-feedback:active, a.button:active, .btn:active {
+    transform: scale(.96);
+}
+
+[class*="card"] { transition: transform .2s cubic-bezier(.34, 1.56, .64, 1), box-shadow .2s ease; }
+[class*="card"]:hover { transform: translateY(-3px); box-shadow: 0 8px 18px rgba(0, 0, 0, .14); }
+
+main > * { animation: sm-rise .45s ease both; }
+main > *:nth-child(2) { animation-delay: .05s; }
+main > *:nth-child(3) { animation-delay: .1s; }
+main > *:nth-child(4) { animation-delay: .15s; }
+main > *:nth-child(5) { animation-delay: .2s; }
+main > *:nth-child(n+6) { animation-delay: .25s; }
+
+@keyframes sm-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}
