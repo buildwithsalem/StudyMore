@@ -250,3 +250,35 @@ select,select option,input,textarea{background-color:var(--card);color:var(--ink
 input::placeholder,textarea::placeholder{color:var(--muted);opacity:.8}
 input[type="date"],input[type="time"]{color-scheme:inherit}
 .campus-find[hidden],.campus-pick[hidden]{display:none}
+
+/* ---- Final iteration: phone layout ---- */
+.d-short{display:none}
+@media (max-width:640px){
+  body{padding-bottom:76px}
+  input,select,textarea{font-size:16px}
+  input[type="file"]{min-height:44px}
+
+  /* the weekly grid fits the screen instead of scrolling the whole page */
+  .availability-scroll{overflow-x:visible}
+  .availability-grid{grid-template-columns:70px repeat(5,minmax(0,1fr));min-width:0;gap:4px}
+  .availability-grid .grid-header{padding:8px 0;font-size:.7rem}
+  .availability-grid .time-label{font-size:.62rem;padding-left:6px;border-left-width:4px;line-height:1.15}
+  .availability-slot span{height:40px;border-radius:6px}
+  .availability-slot span::before{display:none}
+  .d-full{display:none}.d-short{display:inline}
+
+  /* easier to hit with a thumb */
+  .brand{min-height:44px;display:inline-flex;align-items:center}
+  .sm-theme{min-height:40px;padding:0 12px}
+  .back-link{display:inline-block;padding:14px 10px 14px 0}
+  main p a,.form-hint a,.field-hint a{display:inline-block;padding:10px 3px}
+  .seg a,.seg button,.chip span{min-height:40px}
+  a.primary,a.secondary,button.primary,button.secondary{min-height:44px;display:inline-flex;align-items:center;justify-content:center}
+
+  .av-tools button,.campus-tabs button,button[data-place]{min-height:42px}
+  a.clear,a.section-link,.dir-google,.clear-link,a.meeting-link,.meeting-link,.group-card a:not(.primary):not(.secondary),.my-group-card a:not(.primary):not(.secondary){display:inline-block;padding:12px 4px}
+
+  /* the help button no longer sits on top of text */
+  .sm-dock{right:12px;bottom:12px}
+  .sm-dock button.fab{width:42px;height:42px}
+}
