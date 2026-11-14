@@ -76,9 +76,11 @@ class InviteBase(unittest.TestCase):
 
     def exec(self, sql, args=()):
         conn = REAL_CONNECT(self.db_path)
-        conn.execute(sql, args)
-        conn.commit()
-        conn.close()
+        try:
+            conn.execute(sql, args)
+            conn.commit()
+        finally:
+            conn.close()
 
     def invite_id(self):
         return self.rows("SELECT id FROM group_invitations ORDER BY id DESC")[0][0]

@@ -40,7 +40,7 @@ app.register_blueprint(duplicate_bp)
 app.register_blueprint(dashboard_bp)
 from verification import (
     verification_bp, ensure_verification_schema, issue_code,
-    issue_code_if_due, is_uta_email,
+    issue_code_if_due, is_uta_email, is_strong_password,
 )
 app.register_blueprint(verification_bp)
 from invitations import invitations_bp, ensure_invitation_schema
@@ -2349,13 +2349,7 @@ def register():
 
         if password != confirm_password:
             return register_error("Password and confirmation do not match", name, email)
-        if (
-            len(password) < 8
-            or not any(c.isupper() for c in password)
-            or not any(c.islower() for c in password)
-            or not any(c.isdigit() for c in password)
-            or not any(not c.isalnum() and not c.isspace() for c in password)
-        ):
+        if not is_strong_password(password):
             return register_error(
                 "Password must be at least 8 characters and include "
                 "an uppercase letter, a lowercase letter, a number, "
