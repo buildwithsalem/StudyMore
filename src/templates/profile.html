@@ -234,14 +234,19 @@
             </div>
         </details>
 
-        <button type="submit" class="primary create-button">Save Profile</button>
+        <div class="form-actions">
+            <a class="secondary" href="/dashboard">Cancel</a>
+            <button type="submit" class="primary create-button">Save profile</button>
+        </div>
 
     </form>
 
     <section class="form-section danger-zone">
         <h2>Danger zone</h2>
-        <p class="section-note">Deleting your account removes your profile, group memberships, invitations and notifications. Groups you created pass to their longest-standing member. This cannot be undone.</p>
-        <a class="secondary danger-link" href="/account/delete">Delete my account</a>
+        <div class="danger-row">
+            <p class="section-note">Deleting your account removes your profile, group memberships, invitations and notifications. Groups you created pass to their longest-standing member. This cannot be undone.</p>
+            <a class="secondary danger-link" href="/account/delete">Delete my account</a>
+        </div>
     </section>
 
 </main>
