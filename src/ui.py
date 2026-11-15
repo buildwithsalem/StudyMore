@@ -1,6 +1,7 @@
 """Shared interface pieces: nav avatar data, campus directions page, and the
 "who else is free" counts that make the availability grid useful."""
-import sqlite3
+
+from db import DATABASE_ERRORS, DatabaseError
 
 from flask import Blueprint, jsonify, redirect, render_template, session, url_for
 
@@ -62,7 +63,9 @@ def current_ui_user(conn, user_id):
             if prof["avatar_path"]:
                 photo = avatar_url_for(prof["avatar_path"])
             color = AVATAR_COLORS.get(prof["avatar_color"], color)
-    except sqlite3.Error:
+    except DATABASE_ERRORS as error:
+        if isinstance(error, DatabaseError):
+            raise
         photo = ""
     first = (row["name"] or "").split()[0] if (row["name"] or "").split() else ""
     return {
@@ -79,7 +82,9 @@ def inject_ui_user():
     try:
         conn = get_db_connection()
         return {"ui_user": current_ui_user(conn, user_id), "ui_campus": CAMPUS}
-    except sqlite3.Error:
+    except DATABASE_ERRORS as error:
+        if isinstance(error, DatabaseError):
+            raise
         return {"ui_user": None, "ui_campus": CAMPUS}
 
 

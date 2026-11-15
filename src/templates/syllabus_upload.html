@@ -29,7 +29,7 @@
 
     <section class="form-section sem-form">
         <form method="POST" enctype="multipart/form-data" class="syl-form">
-            <label><span>Syllabus file (PDF, Word .docx or .txt, up to 5 MB)</span>
+            <label><span>Syllabus file (PDF, Word .docx or .txt, up to {{ file_limit_mib }} MiB)</span>
                 <input type="file" name="syllabus" accept=".pdf,.docx,.txt">
             </label>
             <label><span>Or paste the schedule text</span>

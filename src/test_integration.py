@@ -118,9 +118,10 @@ class DatabaseConfigurationTests(IntegrationTestCase):
         self.client.get("/dashboard")
         self.client.get("/search")
         self.client.post("/availability", data={"availability": ["Monday|09:00|10:00"]})
-        self.client.post("/register", data={
-            "name": "N", "email": "n@mavs.uta.edu",
-            "password": "StrongPass123!", "confirm_password": "StrongPass123!"})
+        with mock.patch("verification.send_code_email", return_value=True):
+            self.client.post("/register", data={
+              "name": "N", "email": "n@mavs.uta.edu",
+              "password": "StrongPass123!", "confirm_password": "StrongPass123!"})
         self.assertEqual(self.stray_files(), [])
         self.assertTrue(self.conn.execute(
             "SELECT 1 FROM users WHERE email = 'n@mavs.uta.edu'").fetchone())

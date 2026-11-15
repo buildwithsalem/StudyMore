@@ -17,7 +17,7 @@ To turn it on, app.py needs two lines next to the search blueprint:
     app.register_blueprint(duplicate_bp)
 """
 
-import sqlite3
+from db import get_db_connection, is_postgres
 
 from flask import Blueprint, current_app, render_template, request, session
 
@@ -36,9 +36,7 @@ CONFIRM_FIELD = "confirm_duplicate"
 
 
 def get_connection():
-    conn = sqlite3.connect(current_app.config.get("DATABASE", DEFAULT_DATABASE))
-    conn.row_factory = sqlite3.Row
-    return conn
+    return get_db_connection()
 
 
 def fields_to_carry_over(form):
@@ -88,7 +86,10 @@ def check_for_duplicate_group():
 
         similar_groups = find_similar_groups(conn, proposal, user_id)
     finally:
-        conn.close()
+        # The create route must reuse the PostgreSQL transaction and its write
+        # lock. Request teardown closes it when this hook ends the request.
+        if not is_postgres(conn):
+            conn.close()
 
     if not similar_groups:
         return None

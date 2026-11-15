@@ -9,7 +9,7 @@ from flask import (
     url_for,
 )
 
-from db import get_database_path
+from db import get_db_connection
 from search_query import (
     GROUP_STATUSES,
     MEETING_TYPES,
@@ -23,7 +23,7 @@ search_bp = Blueprint("search", __name__, template_folder="templates")
 
 def get_connection():
     # Same database setting as the rest of the app (see db.py).
-    return connect(get_database_path())
+    return get_db_connection()
 
 
 def joined_group_ids(conn, user_id):

@@ -10,25 +10,24 @@ USER_COLS = {
     "friend_id", "addressee_id",
 }
 
+from db import table_names, column_names, foreign_keys, identifier
+
 
 def _tables(conn):
-    rows = conn.execute(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
-    ).fetchall()
-    return [r[0] for r in rows]
+    return table_names(conn)
 
 
 def _columns(conn, table):
-    return [r[1] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()]
+    return column_names(conn, table)
 
 
 def _fk_children(conn, parent):
     """(child_table, child_column) pairs that reference parent.id."""
     out = set()
     for table in _tables(conn):
-        for fk in conn.execute(f"PRAGMA foreign_key_list({table})").fetchall():
-            if fk[2] == parent:
-                out.add((table, fk[3]))
+        for parent_table, column in foreign_keys(conn, table):
+            if parent_table == parent:
+                out.add((table, column))
     if parent == "study_groups":
         for table in _tables(conn):
             if "group_id" in _columns(conn, table):
@@ -46,13 +45,13 @@ def _purge(conn, table, column, values, seen):
     marks = ",".join("?" * len(values))
     if "id" in _columns(conn, table):
         ids = [r[0] for r in conn.execute(
-            f"SELECT id FROM {table} WHERE {column} IN ({marks})", values
+            f"SELECT id FROM {identifier(table)} WHERE {identifier(column)} IN ({marks})", values
         ).fetchall()]
         if ids:
             for child, col in _fk_children(conn, table):
                 if (child, col) != (table, column):
                     _purge(conn, child, col, ids, seen)
-    conn.execute(f"DELETE FROM {table} WHERE {column} IN ({marks})", values)
+    conn.execute(f"DELETE FROM {identifier(table)} WHERE {identifier(column)} IN ({marks})", values)
 
 
 def delete_user_account(conn, user_id):
@@ -79,9 +78,9 @@ def delete_user_account(conn, user_id):
     # 2. Their rows in every table that points at a user.
     fk_user_cols = set()
     for table in _tables(conn):
-        for fk in conn.execute(f"PRAGMA foreign_key_list({table})").fetchall():
-            if fk[2] == "users":
-                fk_user_cols.add((table, fk[3]))
+        for parent_table, column in foreign_keys(conn, table):
+            if parent_table == "users":
+                fk_user_cols.add((table, column))
     for table in _tables(conn):
         if table == "users":
             continue

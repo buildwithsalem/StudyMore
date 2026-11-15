@@ -1,0 +1,10 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "flask",
+  "buildCommand": "python scripts/build_vercel_static.py",
+  "functions": {
+    "index.py": {
+      "excludeFiles": "{.venv/**,.env,.env.*,**/*.db,**/*.db-*,**/*.sqlite*,src/static/uploads/**,src/test_*.py,src/app copy.py,.pytest_cache/**,pylint_report*.txt}"
+    }
+  }
+}

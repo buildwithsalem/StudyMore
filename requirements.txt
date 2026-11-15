@@ -1,3 +1,6 @@
 flask
-pdfplumber
+werkzeug
 python-dotenv
+pdfplumber
+pypdf
+psycopg[binary]>=3.2,<4

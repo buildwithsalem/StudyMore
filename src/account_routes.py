@@ -4,6 +4,7 @@ from flask import Blueprint, redirect, render_template, request, session, url_fo
 from werkzeug.security import check_password_hash
 
 from account_deletion import _columns, _tables, delete_user_account
+from db import identifier, is_postgres
 from student_profile import delete_avatar_file, get_connection
 
 account_bp = Blueprint("account", __name__)
@@ -43,6 +44,8 @@ def delete_account():
             ).fetchone()
             avatar = row[0] if row else None
         except Exception:
+            if is_postgres(conn):
+                raise  # A broken production schema is not an optional-avatar fallback.
             avatar = None
 
         email = user[1]
@@ -51,7 +54,7 @@ def delete_account():
         for table in _tables(conn):
             if table != "users" and "email" in _columns(conn, table):
                 conn.execute(
-                    f"DELETE FROM {table} WHERE LOWER(email) = LOWER(?)", (email,)
+                    f"DELETE FROM {identifier(table)} WHERE LOWER(email) = LOWER(?)", (email,)
                 )
         conn.commit()
     finally:

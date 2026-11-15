@@ -13,7 +13,7 @@ or been cancelled (same idea as the derived "Full" group status). The stored
 value is only updated when the same student is invited again.
 """
 
-import sqlite3
+from db import DATABASE_ERRORS, DatabaseError, begin_write, insert_id, INTEGRITY_ERRORS, is_postgres
 from datetime import datetime, timedelta
 
 from flask import (
@@ -41,6 +41,8 @@ TIME_FORMAT = "%Y-%m-%d %H:%M:%S"
 # --------------------------------------------------------------------------
 
 def ensure_invitation_schema(conn):
+    if is_postgres(conn):
+        return  # PostgreSQL schema is managed only by the migration command.
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS group_invitations (
@@ -74,6 +76,8 @@ def ensure_notifications_table(conn):
     Shared table for the Notification Center. Created here only if the
     Notification Center code hasn't created it yet.
     """
+    if is_postgres(conn):
+        return  # PostgreSQL schema is managed only by the migration command.
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS notifications (
@@ -240,6 +244,8 @@ def check_invite(conn, group, inviter_id, email):
 
 
 def _has_verified_column(conn):
+    if is_postgres(conn):
+        return True
     return any(row[1] == "email_verified" for row in conn.execute("PRAGMA table_info(users)"))
 
 
@@ -261,7 +267,9 @@ def inject_pending_count():
         conn = get_db_connection()
         ensure_invitation_schema(conn)
         return {"pending_invite_count": pending_count_for(conn, user_id)}
-    except sqlite3.Error:
+    except DATABASE_ERRORS as error:
+        if isinstance(error, DatabaseError):
+            raise
         return {"pending_invite_count": 0}
 
 
@@ -340,12 +348,12 @@ def invite(group_id):
         (now_text(), group_id, invitee["id"]),
     )
     try:
-        cursor = conn.execute(
+        generated_id = insert_id(conn,
             "INSERT INTO group_invitations (group_id, inviter_id, invitee_id, status, created_at) "
             "VALUES (?, ?, ?, 'pending', ?)",
             (group_id, user_id, invitee["id"], now_text()),
         )
-    except sqlite3.IntegrityError:
+    except INTEGRITY_ERRORS:
         conn.rollback()
         return _manage_page(
             conn, group, user_id,
@@ -358,7 +366,7 @@ def invite(group_id):
         conn, invitee["id"], "group_invitation",
         f"{inviter_name} invited you to join {group['group_name']} ({group['course_code']}).",
         link_url=url_for("invitations.inbox"),
-        group_id=group_id, related_id=cursor.lastrowid,
+        group_id=group_id, related_id=generated_id,
     )
     conn.commit()
     session["manage_info"] = f"Invitation sent to {invitee['name']}."
@@ -464,7 +472,7 @@ def _respond(invitation_id, action):
 
     # Accept. The check and the insert happen under one write lock so two
     # people accepting the last seat can't both get in.
-    conn.execute("BEGIN IMMEDIATE")
+    begin_write(conn)
     already_in = is_member(conn, row["group_id"], user_id)
     if not already_in:
         status = group_display_status(conn, group)
@@ -474,7 +482,7 @@ def _respond(invitation_id, action):
             session["invite_error"] = reason + " The invitation stays here in case a spot opens up."
             return redirect(url_for("invitations.inbox"))
         conn.execute(
-            "INSERT OR IGNORE INTO group_memberships (user_id, group_id) VALUES (?, ?)",
+            "INSERT INTO group_memberships (user_id, group_id) VALUES (?, ?) ON CONFLICT(user_id, group_id) DO NOTHING",
             (user_id, row["group_id"]),
         )
     conn.execute(

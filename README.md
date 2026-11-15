@@ -42,3 +42,11 @@ From the `src` folder: `python -m unittest discover`
 ## Team
 
 Raghad, Michael, Salem, Muhammed
+
+## Deployment preparation
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for PostgreSQL/SQLite selection, explicit schema
+migrations, Vercel settings and tests. Production requires `DATABASE_URL` with TLS
+and a persistent `FLASK_SECRET_KEY`; local development still defaults to SQLite.
+`/healthz` checks process liveness; `/readyz` checks database readiness. Production
+avatar uploads remain disabled. Neon/Vercel preview validation is still required.

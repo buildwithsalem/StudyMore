@@ -1,0 +1,15 @@
+.git
+.venv
+.env
+.env.*
+*.db
+**/*.db
+**/*.db-*
+**/*.sqlite*
+src/static/uploads
+public/static/uploads
+src/app copy.py
+src/test_*.py
+**/__pycache__
+.pytest_cache
+pylint_report*.txt

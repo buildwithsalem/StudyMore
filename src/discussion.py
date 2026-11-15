@@ -1,4 +1,8 @@
 """Private, membership-gated discussion backend (server-rendered pages)."""
+
+from db import insert_id
+
+from db import is_postgres
 from flask import Blueprint, render_template, redirect, request, session, url_for
 from db import get_db_connection
 from invitations import create_notification
@@ -9,6 +13,8 @@ MAX_CONTENT_LENGTH = 5000
 
 def ensure_discussion_schema(conn):
     """Idempotent additive setup; the caller owns the transaction."""
+    if is_postgres(conn):
+        return  # PostgreSQL schema is managed only by the migration command.
     conn.execute("""CREATE TABLE IF NOT EXISTS discussion_posts (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         group_id INTEGER NOT NULL REFERENCES study_groups(id),
@@ -62,12 +68,12 @@ def posts(group_id):
         if content is None:
             validation_error = "Content must contain 1–5000 characters."
         else:
-            cursor = conn.execute(
+            generated_id = insert_id(conn,
                 "INSERT INTO discussion_posts (group_id, author_id, content) VALUES (?, ?, ?)",
                 (group_id, session["user_id"], content),
             )
             conn.commit()
-            return redirect(url_for("discussion.post", group_id=group_id, post_id=cursor.lastrowid))
+            return redirect(url_for("discussion.post", group_id=group_id, post_id=generated_id))
     rows = conn.execute(
         "SELECT p.*, u.name AS author_name, "
         "(SELECT COUNT(*) FROM discussion_replies r WHERE r.post_id=p.id) AS reply_count "
@@ -107,7 +113,7 @@ def _post(group_id, post_id):
         else:
             # The connection context commits both inserts, or rolls both back.
             with conn:
-                cursor = conn.execute(
+                generated_id = insert_id(conn,
                     "INSERT INTO discussion_replies (post_id, author_id, content) VALUES (?, ?, ?)",
                     (post_id, session["user_id"], content),
                 )
@@ -120,7 +126,7 @@ def _post(group_id, post_id):
                         conn, row["author_id"], "discussion_reply",
                         f"{author['name']} replied to your discussion in {group['group_name']}.",
                         link_url=url_for("discussion.post", group_id=group_id, post_id=post_id),
-                        group_id=group_id, related_id=cursor.lastrowid,
+                        group_id=group_id, related_id=generated_id,
                     )
             return redirect(url_for("discussion.post", group_id=group_id, post_id=post_id))
     replies = conn.execute(
@@ -135,7 +141,8 @@ def _connection():
     # Enforce references on this feature's connections without changing legacy
     # write behavior in other blueprints. Must run before any transaction.
     conn = get_db_connection()
-    conn.execute("PRAGMA foreign_keys = ON")
+    if not is_postgres(conn):
+        conn.execute("PRAGMA foreign_keys = ON")
     return conn
 
 

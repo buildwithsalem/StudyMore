@@ -1,7 +1,7 @@
 """Forgot password: email a 6-digit code, then let the student choose a new password.
 
 Works like sign-up verification (verification.py):
-  - Demo mode (default): the code is printed in the terminal running the app.
+  - Local demo mode (opt-in): set STUDYMORE_SHOW_CODES=1 to display codes.
   - Real email: set STUDYMORE_SMTP_HOST (plus the same optional settings).
 
 Safety rules:
@@ -10,6 +10,8 @@ Safety rules:
   - 5 wrong tries lock the code; a code works once.
   - A new code can be sent at most once a minute.
 """
+
+from db import is_postgres
 
 import os
 import secrets
@@ -29,6 +31,7 @@ from flask import (
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from db import get_db_connection
+from production_config import demo_codes_enabled
 from verification import (
     CODE_LENGTH,
     CODE_LIFETIME_SECONDS,
@@ -50,6 +53,8 @@ BAD_CODE = "That code isn't right or has expired. Check it, or ask for a new one
 
 
 def ensure_reset_schema(conn):
+    if is_postgres(conn):
+        return  # PostgreSQL schema is managed only by the migration command.
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS password_resets (
@@ -68,7 +73,7 @@ def send_reset_email(email, code):
     """Returns True if sent (or printed in demo mode), False if sending failed."""
     host = os.environ.get("STUDYMORE_SMTP_HOST")
     if not host:
-        if os.environ.get("STUDYMORE_SHOW_CODES") == "1":
+        if demo_codes_enabled():
             print(f"[StudyMore DEMO] Password reset code for {email}: {code}", flush=True)
             from verification import remember_demo_code
             remember_demo_code(code, "password reset")
