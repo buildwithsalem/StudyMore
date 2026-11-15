@@ -17,11 +17,12 @@ preview verification.
   `STUDYMORE_ENV=production`) requires both `DATABASE_URL` and `FLASK_SECRET_KEY`
   at startup. There is no production SQLite fallback, automatic schema creation or
   demo-user creation. Local startup with DATABASE_URL also skips SQLite initialization.
-- Connections require a PostgreSQL URL with host/database and TLS. The default is
-  `sslmode=require`; `verify-ca` and `verify-full` are accepted. Insecure modes are
-  rejected. Prefer `verify-full` with the correct trusted root configuration for Neon.
-  The application enforces a 5-second connection timeout, 10-second statement timeout,
-  5-second lock timeout and disables prepared statements for transaction-pool compatibility.
+- Runtime and migration PostgreSQL URLs require certificate and hostname verification.
+  Use `sslmode=verify-full` or omit the option to get that default. Replace
+  `sslmode=require` in generated URLs and keep the database hostname. libpq uses
+  the system trust store by default. For a private CA, set `sslrootcert` to the CA
+  file. The 10-second statement timeout and 5-second lock timeout are set per
+  transaction for pooler compatibility. The connection timeout is 5 seconds.
 - PostgreSQL gets one connection per Flask request/application context, reused by
   context processors and reopened if an existing route closes it. Commit/rollback
   are explicit. Teardown rolls back unfinished work and closes connections; no global
@@ -106,7 +107,7 @@ locally and fill in values privately. Never commit it or put secrets in vercel.j
 
 | Variable | Requirement |
 | --- | --- |
-| FLASK_SECRET_KEY | Required in production/preview; persistent, securely generated random secret (at least 32 random bytes recommended). Separate preview and production keys. Rotation invalidates sessions. |
+| FLASK_SECRET_KEY | Required in production/preview. Generate each environment's key with `python -c "import secrets; print(secrets.token_hex(32))"`. Startup rejects short, low-diversity and common placeholder values. Rotation invalidates sessions. |
 | DATABASE_URL | Required in production/preview; PostgreSQL runtime URL. Use Neon's pooled connection with TLS and a restricted runtime role. Omit for SQLite development/tests. |
 | DATABASE_URL_DIRECT | Only for the explicit migration/check command. Direct PostgreSQL URL with migration-role credentials; do not expose to the web runtime unnecessarily. |
 | STUDYMORE_ENV | Set production for deployed hosts. Vercel system variables also force production safeguards. Leave empty locally. |
@@ -240,10 +241,9 @@ or migrated during this work.
 3. Production profile photo writes/deletes remain blocked at the filesystem layer.
    Use initials/color avatars until an authenticated durable object-storage adapter
    is implemented and tested. No temporary-filesystem workaround is enabled.
-4. The existing 5 MiB syllabus UI exceeds Vercel's 4.5 MB request limit including
-   multipart overhead. Before public release, reduce the cloud upload limit and
-   update the UI, or implement authenticated direct uploads with temporary object
-   cleanup. See [Vercel Function limits](https://vercel.com/docs/functions/limitations).
+4. Deployed syllabus files are limited to 4 MiB, with a 4,400,000-byte request
+   limit to leave room below Vercel's 4.5 MB cap. Local development accepts 5 MiB
+   files. See [Vercel Function limits](https://vercel.com/docs/functions/limitations).
 5. Real SMTP delivery, sender authorization and provider quotas need a preview test.
    No email was sent here. Registration intentionally removes a new unverified user
    when delivery fails. Configure a valid numeric STARTTLS port.

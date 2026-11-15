@@ -16,6 +16,7 @@ import production_config
 import verification
 
 ROOT = Path(__file__).resolve().parents[1]
+TEST_SECRET = "60e47c7d86b704a6920fc194ded00096fefa92ccfdbdbfccf8f6faea24c4ff15"
 
 
 @pytest.fixture(autouse=True)
@@ -36,10 +37,10 @@ def test_deployed_settings_and_code_safety(monkeypatch, capsys, name, value):
     app = Flask(__name__)
     with pytest.raises(RuntimeError, match="FLASK_SECRET_KEY"):
         production_config.configure_app(app)
-    monkeypatch.setenv("FLASK_SECRET_KEY", "deployment-test-only")
+    monkeypatch.setenv("FLASK_SECRET_KEY", TEST_SECRET)
     with pytest.raises(RuntimeError, match="DATABASE_URL"):
         production_config.configure_app(app)
-    monkeypatch.setenv("DATABASE_URL", "postgresql://unused@localhost/studymore_test_unused?sslmode=require")
+    monkeypatch.setenv("DATABASE_URL", "postgresql://unused@localhost/studymore_test_unused?sslmode=verify-full")
     production_config.configure_app(app)
     assert not app.debug
     assert app.config["SESSION_COOKIE_SECURE"]
@@ -71,8 +72,8 @@ def test_cloud_avatar_does_not_write(monkeypatch, tmp_path):
 
 def test_entrypoint_without_database_or_working_directory_dependency(tmp_path):
     env = os.environ.copy()
-    env.update(VERCEL="1", FLASK_SECRET_KEY="deployment-test-only",
-               DATABASE_URL="postgresql://unused@localhost/studymore_test_unused?sslmode=require",
+    env.update(VERCEL="1", FLASK_SECRET_KEY=TEST_SECRET,
+               DATABASE_URL="postgresql://unused@localhost/studymore_test_unused?sslmode=verify-full",
                FLASK_DEBUG="1", STUDYMORE_SHOW_CODES="1", PYTHONPATH=str(ROOT))
     result = subprocess.run([sys.executable, "-c", """
 import sqlite3
@@ -94,6 +95,15 @@ with patch.object(sqlite3, 'connect', side_effect=AssertionError('Database acces
 """], cwd=tmp_path, env=env, capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
     assert not list(tmp_path.iterdir())
+
+
+@pytest.mark.parametrize("secret", ["short", "a" * 64, "change-me-to-a-longer-secret-key-before-deploying"])
+def test_production_rejects_weak_secret(monkeypatch, secret):
+    monkeypatch.setenv("VERCEL", "1")
+    monkeypatch.setenv("FLASK_SECRET_KEY", secret)
+    with pytest.raises(RuntimeError, match="FLASK_SECRET_KEY") as caught:
+        production_config.configure_app(Flask(__name__))
+    assert secret not in str(caught.value)
 
 
 def test_static_build_excludes_user_uploads(tmp_path):

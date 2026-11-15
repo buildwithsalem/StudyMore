@@ -6,17 +6,18 @@ are never truncated, reset or dropped. No Neon/remote servers are accepted.
 from concurrent.futures import ThreadPoolExecutor
 import os
 import uuid
-from urllib.parse import urlsplit
+from urllib.parse import urlencode
 
 import psycopg
 from psycopg import sql
+from psycopg.conninfo import conninfo_to_dict
 import pytest
 from werkzeug.security import generate_password_hash, check_password_hash
 
 from app import app
 from db import insert_id, table_names
 from migrations import migrate, check_schema
-from postgres_backend import Connection, DatabaseError, IntegrityError, connection_options
+from postgres_backend import Connection, DatabaseError, IntegrityError, OperationalError, connection_options
 
 PASSWORD = "StudyMore2026!"
 
@@ -25,14 +26,49 @@ def safe_test_url():
     url = os.environ.get("STUDYMORE_TEST_DATABASE_URL")
     if not url:
         pytest.skip("Set STUDYMORE_TEST_DATABASE_URL for isolated PostgreSQL tests")
-    parsed = urlsplit(url)
-    if parsed.hostname not in {"localhost", "127.0.0.1", "::1"} or not parsed.path.startswith("/studymore_test_"):
+    try:
+        options = connection_options(url)
+    except ValueError:
+        pytest.fail("Invalid PostgreSQL test URL", pytrace=False)
+    host = options["host"]
+    if (host not in {"localhost", "127.0.0.1", "::1"}
+            or not options["dbname"].startswith("studymore_test_")
+            or not options["dbname"].removeprefix("studymore_test_")
+            or "hostaddr" in options or "service" in options):
         pytest.fail("PostgreSQL tests require a loopback database named studymore_test_*", pytrace=False)
-    for key in ("DATABASE_URL", "DATABASE_URL_DIRECT"):
-        other = urlsplit(os.environ.get(key, ""))
-        if (other.hostname, other.port, other.path) == (parsed.hostname, parsed.port, parsed.path):
+    for configured_url in (app.config.get("DATABASE_URL"), os.getenv("DATABASE_URL"), os.getenv("DATABASE_URL_DIRECT")):
+        if not configured_url:
+            continue
+        try:
+            other = conninfo_to_dict(configured_url)
+        except (ValueError, psycopg.Error):
+            pytest.fail("Cannot verify isolation from the configured application database", pytrace=False)
+        # Also catch aliases and tunnels to a configured database of the same name.
+        if other.get("dbname") == options["dbname"]:
             pytest.fail("Test database must not be the configured application/migration database", pytrace=False)
-    return url
+    # Pin the network destination, even when PGHOSTADDR or DNS points elsewhere.
+    options["hostaddr"] = "127.0.0.1" if host == "localhost" else host
+    options.setdefault("port", "5432")
+    return "postgresql:///?" + urlencode(options)
+
+
+@pytest.mark.parametrize("query", ["host=remote.invalid", "hostaddr=192.0.2.1", "host=localhost,remote.invalid", "service=other", "dbname=production"])
+def test_test_url_rejects_effective_destination_overrides(monkeypatch, query):
+    monkeypatch.setenv("STUDYMORE_TEST_DATABASE_URL", f"postgresql://localhost/studymore_test_unused?{query}")
+    with pytest.raises(pytest.fail.Exception, match="loopback"):
+        safe_test_url()
+
+
+def test_test_url_pins_address_and_rejects_configured_database_alias(monkeypatch):
+    monkeypatch.setenv("PGHOSTADDR", "192.0.2.1")
+    monkeypatch.setenv("STUDYMORE_TEST_DATABASE_URL", "postgresql://localhost/studymore_test_unused")
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.delenv("DATABASE_URL_DIRECT", raising=False)
+    monkeypatch.setitem(app.config, "DATABASE_URL", None)
+    assert connection_options(safe_test_url())["hostaddr"] == "127.0.0.1"
+    monkeypatch.setenv("DATABASE_URL_DIRECT", "postgresql://127.0.0.1:5432/studymore_test_unused")
+    with pytest.raises(pytest.fail.Exception, match="configured"):
+        safe_test_url()
 
 
 @pytest.fixture
@@ -67,6 +103,16 @@ def pg(monkeypatch):
         admin.close()
 
 
+def test_readiness_rejects_unknown_migration(pg):
+    conn, _, url = pg
+    conn.execute("INSERT INTO schema_migrations(version, checksum) VALUES (?, ?)", ("999_future.sql", "unknown"))
+    conn.commit()
+    response = app.test_client().get("/readyz")
+    assert response.status_code == 503 and response.json == {"ready": False}
+    with pytest.raises(DatabaseError, match="history"):
+        migrate(url)
+
+
 def client_for(user_id):
     client = app.test_client()
     with client.session_transaction() as session:
@@ -75,15 +121,37 @@ def client_for(user_id):
     return client
 
 
-def create_group(client, **changes):
+def group_form(**changes):
     form = dict(group_name="PostgreSQL Study", course_code="CSE3310", section="001",
                 study_goal="Exam preparation", description="Study together", meeting_type="In-Person",
                 meeting_date="2098-10-01", meeting_time="10:00", location="Library",
                 meeting_link="", max_members="3", confirm_duplicate="yes")
     form.update(changes)
-    response = client.post("/create-group", data=form)
+    return form
+
+
+def create_group(client, **changes):
+    response = client.post("/create-group", data=group_form(**changes))
     assert response.status_code == 302, response.data
     return int(response.location.rsplit("/", 1)[1])
+
+
+def test_concurrent_duplicate_group_creation(pg):
+    conn, users, _ = pg
+    def submit(_):
+        return client_for(users[0]).post("/create-group", data=group_form()).status_code
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        assert sorted(pool.map(submit, range(2))) == [302, 409]
+    assert conn.execute("SELECT count(*) FROM study_groups").fetchone()[0] == 1
+
+
+def test_tls_rejects_wrong_hostname(pg):
+    _, _, url = pg
+    options = connection_options(url)
+    options["host"] = "certificate-name-mismatch.invalid"
+    with pytest.raises(OperationalError, match="connection unavailable"):
+        Connection("postgresql:///?" + urlencode(options))
 
 
 def test_schema_persistence_constraints_and_reinitialization(pg):

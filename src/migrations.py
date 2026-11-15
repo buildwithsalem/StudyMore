@@ -23,9 +23,9 @@ def checksum_for(file):
 
 def check_schema(conn):
     applied = {r[0]: r[1] for r in conn.execute("SELECT version, checksum FROM schema_migrations")}
-    for file in migration_files():
-        if applied.get(file.name) != checksum_for(file):
-            raise DatabaseError("Database migrations are pending or incompatible.")
+    expected = {file.name: checksum_for(file) for file in migration_files()}
+    if not expected or applied != expected:
+        raise DatabaseError("Database migrations are pending or incompatible.")
 
 
 def migrate(url):
@@ -37,7 +37,10 @@ def migrate(url):
             conn.begin_write()
             conn.execute("CREATE TABLE IF NOT EXISTS schema_migrations (version TEXT PRIMARY KEY, checksum TEXT NOT NULL)")
             applied = {r[0]: r[1] for r in conn.execute("SELECT version, checksum FROM schema_migrations")}
-            for file in migration_files():
+            files = migration_files()
+            if not files or applied.keys() - {file.name for file in files}:
+                raise DatabaseError("Database migration history is incompatible.")
+            for file in files:
                 checksum = checksum_for(file)
                 if file.name in applied:
                     if applied[file.name] != checksum:

@@ -17,11 +17,30 @@ def test_compatible_row_contract():
     assert tuple(row) == (1, "Student")
 
 
-@pytest.mark.parametrize("url", ["sqlite:///tmp.db", "postgresql://localhost/test?sslmode=disable", "postgresql://localhost/test?sslmode=prefer", "invalid-secret"])
+@pytest.mark.parametrize("url", [
+    "sqlite:///tmp.db", "invalid-secret", "postgresql:///test?host=%2Ftmp",
+    "postgresql://localhost/test?host=localhost,",
+    *[f"postgresql://localhost/test?sslmode={mode}" for mode in ("disable", "prefer", "require", "verify-ca")],
+])
 def test_insecure_or_invalid_url_rejected(url):
     with pytest.raises(ValueError) as caught:
         connection_options(url)
     assert url not in str(caught.value)
+
+
+def test_connection_defaults_to_hostname_and_certificate_verification():
+    options = connection_options("postgresql://localhost/test?gssencmode=prefer")
+    assert options["sslmode"] == "verify-full"
+    assert options["sslrootcert"] == "system"
+    assert options["gssencmode"] == "disable"
+
+
+@pytest.mark.parametrize("name", ['users"; DROP TABLE users; --', "public.users", "user name", "users\n", "users/*"])
+def test_identifier_rejects_sql_syntax(name):
+    from db import identifier
+    assert identifier("user_profiles") == '"user_profiles"'
+    with pytest.raises(ValueError):
+        identifier(name)
 
 
 def test_connection_error_never_contains_driver_credentials():

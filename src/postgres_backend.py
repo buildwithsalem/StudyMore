@@ -2,6 +2,7 @@
 import re
 import psycopg
 from psycopg.conninfo import conninfo_to_dict
+from psycopg.pq import TransactionStatus
 
 
 class DatabaseError(Exception):
@@ -23,13 +24,18 @@ def connection_options(url):
         options = conninfo_to_dict(url)
         if not options.get("host") or not options.get("dbname"):
             raise ValueError()
-        if options.get("sslmode", "require") not in {"require", "verify-ca", "verify-full"}:
+        if any(not host.strip() or host.lstrip().startswith(("/", "@")) for host in options["host"].split(",")):
+            raise ValueError()  # libpq does not apply TLS to Unix sockets.
+        if options.get("sslmode", "verify-full") != "verify-full":
             raise ValueError()
-        options.setdefault("sslmode", "require")
-        options.update(connect_timeout=5, options="-c statement_timeout=10000 -c lock_timeout=5000")
+        options["sslmode"] = "verify-full"
+        options.setdefault("sslrootcert", "system")
+        options["gssencmode"] = "disable"  # Require TLS even if GSS encryption is available.
+        # Startup GUC options can be rejected or ignored by transaction poolers.
+        options.update(connect_timeout=5, options="")
         return options
     except (ValueError, psycopg.Error):
-        raise ValueError("DATABASE_URL must be a PostgreSQL URL with TLS enabled.") from None
+        raise ValueError("Database URL must be a PostgreSQL URL using sslmode=verify-full.") from None
 
 
 TOKENS = re.compile(
@@ -87,6 +93,10 @@ class Connection:
     def closed(self):
         return self.raw.closed
 
+    def _configure_transaction(self):
+        if self.raw.info.transaction_status == TransactionStatus.IDLE:
+            self.raw.execute("SET LOCAL statement_timeout = '10s'; SET LOCAL lock_timeout = '5s'")
+
     def begin_write(self):
         # A transaction-scoped application-wide write lock is conservative but
         # safe for this small app, including cross-feature and missing-row races.
@@ -94,6 +104,7 @@ class Connection:
         self.writable = True
         if not self._locked:
             try:
+                self._configure_transaction()
                 self.raw.execute("SELECT pg_advisory_xact_lock(1937012089, 1)")
                 self._locked = True
             except psycopg.Error:
@@ -103,6 +114,7 @@ class Connection:
         if self.writable:
             self.begin_write()
         try:
+            self._configure_transaction()
             return self.raw.execute(bind_sql(statement) if parameters is not None else statement, parameters)
         except psycopg.IntegrityError:
             raise IntegrityError("Database constraint rejected the operation.") from None

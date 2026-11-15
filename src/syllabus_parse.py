@@ -13,12 +13,13 @@ import xml.etree.ElementTree as ET
 import zipfile
 from datetime import date, timedelta
 
+from production_config import LOCAL_SYLLABUS_BYTES as MAX_FILE_BYTES
+
 try:  # optional dependency
     from pypdf import PdfReader
 except ImportError:  # pragma: no cover - depends on the server
     PdfReader = None
 
-MAX_FILE_BYTES = 5 * 1024 * 1024
 MAX_TEXT_CHARS = 200_000
 MAX_PDF_PAGES = 40
 MAX_ROWS = 80
@@ -102,7 +103,7 @@ def extract_text(filename, data):
     """Return the plain text of an uploaded file, or raise SyllabusError."""
     name = (filename or "").lower()
     if len(data) > MAX_FILE_BYTES:
-        raise SyllabusError("That file is too large. Please use a file under 5 MB.")
+        raise SyllabusError("That file is too large. Use a file up to 5 MiB.")
     if name.endswith(".txt"):
         text = data.decode("utf-8", errors="replace")
     elif name.endswith(".docx"):

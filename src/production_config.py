@@ -2,6 +2,9 @@
 import os
 import time
 
+LOCAL_SYLLABUS_BYTES = 5 * 1024 * 1024
+DEPLOYED_SYLLABUS_BYTES = 4 * 1024 * 1024
+
 
 def is_production():
     # Preview deployments must be just as safe as production deployments.
@@ -19,8 +22,12 @@ def demo_codes_enabled():
 def configure_app(app):
     production = is_production()
     secret = os.environ.get("FLASK_SECRET_KEY", "").strip()
-    if production and not secret:
-        raise RuntimeError("FLASK_SECRET_KEY is required for deployed environments.")
+    if production and (
+        len(secret.encode("utf-8")) < 32
+        or len(set(secret)) < 12
+        or secret.lower().startswith(("changeme", "change-me", "replace", "your-secret", "your_secret"))
+    ):
+        raise RuntimeError("FLASK_SECRET_KEY must be generated from at least 32 random bytes for deployed environments.")
     database_url = os.environ.get("DATABASE_URL", "").strip()
     if production and not database_url:
         raise RuntimeError("DATABASE_URL is required for deployed environments.")
@@ -39,4 +46,6 @@ def configure_app(app):
         SESSION_COOKIE_SECURE=production,
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",
+        MAX_CONTENT_LENGTH=4_400_000 if production else 6 * 1024 * 1024,
+        SYLLABUS_MAX_BYTES=DEPLOYED_SYLLABUS_BYTES if production else LOCAL_SYLLABUS_BYTES,
     )

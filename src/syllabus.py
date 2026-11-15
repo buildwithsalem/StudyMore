@@ -5,7 +5,7 @@ The uploaded file is read in memory and never stored."""
 
 from datetime import date
 
-from flask import Blueprint, redirect, render_template, request, session, url_for
+from flask import Blueprint, current_app, redirect, render_template, request, session, url_for
 
 from db import get_db_connection
 from semesters import (
@@ -40,6 +40,7 @@ def _render_upload(semester, courses, error=None, status=200):
             courses=courses,
             error=error,
             form=request.form,
+            file_limit_mib=current_app.config["SYLLABUS_MAX_BYTES"] // (1024 * 1024),
         ),
         status,
     )
@@ -67,7 +68,10 @@ def syllabus_upload(semester_id):
     pdf_bytes = None
     try:
         if upload is not None and upload.filename:
-            data = upload.read()
+            limit = current_app.config["SYLLABUS_MAX_BYTES"]
+            data = upload.read(limit + 1)
+            if len(data) > limit:
+                return _render_upload(semester, courses, f"That file is too large. Use a file up to {limit // (1024 * 1024)} MiB.", 413)
             text = extract_text(upload.filename, data)
             if upload.filename.lower().endswith(".pdf"):
                 pdf_bytes = data

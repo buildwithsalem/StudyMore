@@ -11,6 +11,7 @@ import socket
 import subprocess
 import sys
 import tempfile
+from urllib.parse import urlencode
 
 
 def main():
@@ -22,10 +23,12 @@ def main():
     with tempfile.TemporaryDirectory(prefix="studymore-pg-") as folder:
         work = Path(folder)
         data = work / "data"
+        local_env = {name: value for name, value in os.environ.items() if not name.startswith("PG")}
         def run(*cmd):
-            return subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+            return subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, env=local_env)
         run(str(binary / "initdb"), "-D", str(data), "-U", "studymore_test_owner", "-A", "trust", "--no-locale", "--encoding=UTF8")
         run("openssl", "req", "-new", "-x509", "-nodes", "-days", "1", "-subj", "/CN=localhost",
+            "-addext", "subjectAltName=DNS:localhost,IP:127.0.0.1",
             "-keyout", str(data / "server.key"), "-out", str(data / "server.crt"))
         (data / "server.key").chmod(0o600)
         with socket.socket() as probe:
@@ -38,10 +41,11 @@ def main():
             run(str(binary / "pg_ctl"), "-D", str(data), "-l", str(work / "postgres.log"), "-w", "start")
             started = True
             run(str(binary / "createdb"), "-h", "127.0.0.1", "-p", str(port), "-U", "studymore_test_owner", "studymore_test_suite")
-            env = os.environ.copy()
+            env = local_env.copy()
             for key in ("DATABASE_URL", "DATABASE_URL_DIRECT", "VERCEL", "VERCEL_ENV", "STUDYMORE_ENV"):
                 env.pop(key, None)
-            env["STUDYMORE_TEST_DATABASE_URL"] = f"postgresql://studymore_test_owner@127.0.0.1:{port}/studymore_test_suite?sslmode=require"
+            tls = urlencode({"sslmode": "verify-full", "sslrootcert": data / "server.crt"})
+            env["STUDYMORE_TEST_DATABASE_URL"] = f"postgresql://studymore_test_owner@127.0.0.1:{port}/studymore_test_suite?{tls}"
             # Copy source only: tests cannot read or mutate user SQLite databases.
             checkout = work / "checkout"
             checkout.mkdir()

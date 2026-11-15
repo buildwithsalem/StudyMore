@@ -241,6 +241,19 @@ def test_bad_extension_rejected(ctx):
     assert resp.status_code == 400
 
 
+def test_deployed_upload_limit_matches_form_and_rejects_oversize(ctx, monkeypatch):
+    client, _, sem_id = ctx
+    from production_config import DEPLOYED_SYLLABUS_BYTES
+
+    monkeypatch.setitem(client.application.config, "SYLLABUS_MAX_BYTES", DEPLOYED_SYLLABUS_BYTES)
+    monkeypatch.setitem(client.application.config, "MAX_CONTENT_LENGTH", 4_400_000)
+    path = f"/semesters/{sem_id}/syllabus"
+    assert b"up to 4 MiB" in client.get(path).data
+    for size in (DEPLOYED_SYLLABUS_BYTES, DEPLOYED_SYLLABUS_BYTES + 1, 4_400_000):
+        response = client.post(path, data={"syllabus": (io.BytesIO(b"a" * size), "syllabus.txt")})
+        assert response.status_code == (200 if size == DEPLOYED_SYLLABUS_BYTES else 413)
+
+
 def test_confirm_adds_checked_rows_and_study_plan(ctx):
     client, path, sem_id = ctx
     resp = client.post(

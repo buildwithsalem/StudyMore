@@ -29,8 +29,6 @@ init_database_config(app)
 # Only http(s) meeting links are ever rendered as hrefs, even for old rows.
 app.add_template_filter(safe_meeting_url, "safe_meeting_url")
 
-app.config["MAX_CONTENT_LENGTH"] = 6 * 1024 * 1024
-
 
 @app.before_request
 def clear_production_demo_code():
@@ -65,7 +63,8 @@ def database_unavailable(error):
 
 @app.errorhandler(413)
 def file_too_large(error):
-        return "That file is too large. Profile photos must be 3 MB or smaller and syllabus files 5 MB or smaller.", 413
+    syllabus_limit = app.config["SYLLABUS_MAX_BYTES"] // (1024 * 1024)
+    return f"That upload is too large. Syllabus files must be {syllabus_limit} MiB or smaller.", 413
 from account_routes import account_bp
 app.register_blueprint(account_bp)
 app.register_blueprint(search_bp)
