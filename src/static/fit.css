@@ -40,6 +40,12 @@ pre, code { white-space: pre-wrap; overflow-wrap: anywhere; }
 /* ---------- 3. DARK MODE FIXES ----------
    (written twice: once for "device is dark", once for the manual dark switch) */
 @media (prefers-color-scheme: dark) {
+    /* the zine "ink" shadow is near-white in dark mode: swap the heavy white blocks
+       for a soft tinted offset. Respects the customizer's own Shadow choice. */
+    :root:not([data-theme="light"]):not([data-shadow]) {
+        --shadow: 4px 4px 0 rgba(123, 140, 255, .32);
+        --shadow-hover: 6px 6px 0 rgba(123, 140, 255, .5);
+    }
     :root:not([data-theme="light"]) .hl {
         background: linear-gradient(transparent 84%, var(--lime) 84% 96%, transparent 96%);
     }
@@ -51,6 +57,10 @@ pre, code { white-space: pre-wrap; overflow-wrap: anywhere; }
     :root:not([data-theme="light"]) :is(button, a):is([class*="danger"], [class*="delete"]) {
         background: transparent; color: var(--danger); border-color: var(--danger); box-shadow: none;
     }
+}
+:root[data-theme="dark"]:not([data-shadow]) {
+    --shadow: 4px 4px 0 rgba(123, 140, 255, .32);
+    --shadow-hover: 6px 6px 0 rgba(123, 140, 255, .5);
 }
 :root[data-theme="dark"] .hl {
     background: linear-gradient(transparent 84%, var(--lime) 84% 96%, transparent 96%);
@@ -65,12 +75,10 @@ pre, code { white-space: pre-wrap; overflow-wrap: anywhere; }
 }
 
 /* ---------- 4. PROFILE PAGE ---------- */
-/* a chosen profile color tints the header; text on it is always white */
 .profile-header[style] { color: #fff; }
 .profile-header[style] h1,
 .profile-header[style] p { color: #fff; }
 
-/* collapsible sections */
 details.form-section > summary {
     display: flex; align-items: center; justify-content: space-between;
     gap: 12px; cursor: pointer; list-style: none;
@@ -89,6 +97,169 @@ details.form-section[open] > summary::after { transform: rotate(225deg); }
 .danger-zone h2 { color: var(--danger, #b3261e); }
 .danger-zone .danger-link { color: var(--danger, #b3261e); border-color: var(--danger, #b3261e); }
 
+/* ---------- 5. "ARE YOU SURE?" POP-UP (confirm.js) ---------- */
+dialog.sm-confirm {
+    border: 2px solid var(--ink, #111); border-radius: var(--r, 16px);
+    background: var(--card, #fff); color: var(--ink, #111);
+    padding: 22px; width: min(92vw, 420px); box-shadow: var(--shadow, none);
+}
+dialog.sm-confirm::backdrop { background: rgba(12, 12, 40, .6); }
+dialog.sm-confirm h2 { margin: 0 0 8px; font-size: 1.25rem; }
+dialog.sm-confirm p { margin: 0 0 18px; line-height: 1.45; }
+dialog.sm-confirm .sm-confirm-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* ---------- 6. DARK PALETTE (soft navy, readability-tuned) ----------
+   html:root beats ui.css's :root selectors no matter which loads first.
+   A color saved by the customizer (inline style) still wins on purpose. */
+@media (prefers-color-scheme: dark) {
+    html:root:not([data-theme="light"]) {
+        --bg: #0d1020; --card: #171b30; --tint: #202645;
+        --ink: #f4f5fb; --muted: #b4b9d6;
+        --blue: #8fa0ff; --on-blue: #0d1020;
+        --orange: #ff9a62; --lime: #d4f55a; --pink: #ffb3d1;
+        --danger: #ff7a80;
+    }
+}
+html:root[data-theme="dark"] {
+    --bg: #0d1020; --card: #171b30; --tint: #202645;
+    --ink: #f4f5fb; --muted: #b4b9d6;
+    --blue: #8fa0ff; --on-blue: #0d1020;
+    --orange: #ff9a62; --lime: #d4f55a; --pink: #ffb3d1;
+    --danger: #ff7a80;
+}
+
+/* ---------- 7. SPACING + ACTION ROWS ---------- */
+:root { --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 24px; --sp-6: 32px; --sp-7: 48px; }
+
+.form-actions {
+    display: flex; justify-content: flex-end; align-items: center;
+    gap: var(--sp-3); flex-wrap: wrap; margin-top: var(--sp-6);
+}
+.form-actions .create-button { min-width: 200px; }
+
+.danger-zone { margin-top: var(--sp-7); padding: var(--sp-5); }
+.danger-zone .danger-row {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: var(--sp-5); flex-wrap: wrap;
+}
+.danger-zone .danger-row p { flex: 1 1 320px; margin: 0; }
+.danger-zone .danger-link { flex: 0 0 auto; }
+
+@media (max-width: 720px) {
+    .form-actions { flex-direction: column-reverse; align-items: stretch; margin-top: var(--sp-5); }
+    .form-actions > * { width: 100%; text-align: center; }
+    .danger-zone { margin-top: var(--sp-6); padding: var(--sp-4); }
+    .danger-zone .danger-link { width: 100%; text-align: center; }
+}
+
+/* ---------- 8. GROUP OWNER ACTION BUTTONS ----------
+   Finds the container that holds the "Edit Details" link (href ends in /edit)
+   and lays its buttons out as an even grid. */
+:is(div, section, aside, nav):has(> a[href$="/edit"]) {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)) !important;
+    gap: var(--sp-4, 16px) !important;
+    align-items: stretch;
+    margin-top: var(--sp-5, 24px);
+}
+/* the "You created this group" line becomes a full-width header */
+:is(div, section, aside, nav):has(> a[href$="/edit"]) > :not(a):not(form) {
+    grid-column: 1 / -1;
+    margin: 0;
+}
+:is(div, section, aside, nav):has(> a[href$="/edit"]) > a,
+:is(div, section, aside, nav):has(> form):has(> a[href$="/edit"]) > form {
+    margin: 0;
+    min-width: 0;
+}
+:is(div, section, aside, nav):has(> a[href$="/edit"]) > a {
+    display: flex; align-items: center; justify-content: center;
+    min-height: 52px; text-align: center; width: auto;
+}
+:is(div, section, aside, nav):has(> a[href$="/edit"]) > form { display: block; }
+:is(div, section, aside, nav):has(> a[href$="/edit"]) > form > button {
+    width: 100%; min-height: 52px; margin: 0;
+    display: flex; align-items: center; justify-content: center; text-align: center;
+}
+@media (max-width: 720px) {
+    :is(div, section, aside, nav):has(> a[href$="/edit"]) {
+        grid-template-columns: minmax(0, 1fr) !important;
+    }
+}
+
+/* ---------- 9. AVAILABILITY ---------- */
+.availability-grid .availability-slot span { border-radius: 8px; transition: background .15s ease, transform .15s ease; }
+.availability-grid .availability-slot:hover span { transform: scale(1.05); }
+.availability-grid .availability-slot input:checked + span {
+    background: linear-gradient(135deg, var(--blue), color-mix(in srgb, var(--blue) 55%, var(--pink)));
+    animation: av-pop .22s ease;
+}
+@keyframes av-pop { 0% { transform: scale(.82); } 60% { transform: scale(1.08); } 100% { transform: scale(1); } }
+.availability-grid .grid-header.is-today { box-shadow: inset 0 -3px 0 var(--orange); }
+
+@media (max-width: 720px) {
+    .availability-scroll { overflow: visible !important; }
+    .availability-grid {
+        grid-template-columns: 38px repeat(7, minmax(0, 1fr)) !important;
+        min-width: 0 !important; width: 100% !important; gap: 3px !important;
+    }
+    .availability-grid .time-header { font-size: 0 !important; }
+    .availability-grid .grid-header { font-size: .66rem; padding: 4px 0; text-align: center; min-width: 0; }
+    .availability-grid .d-full { display: none !important; }
+    .availability-grid .d-short { display: inline !important; }
+    .availability-grid .time-label {
+        font-size: .62rem !important; line-height: 1; padding-left: 4px !important;
+        border-left-width: 3px !important; white-space: nowrap;
+    }
+    .availability-grid .availability-slot span { min-height: 30px; height: 30px; }
+    .availability-main .page-heading p { display: none; }
+}
+
+/* ---------- 10. AVAILABILITY: ALIGNED GRID + PHONE DAY VIEW ---------- */
+.availability-grid {
+    grid-template-columns: minmax(84px, auto) repeat(var(--days, 5), minmax(0, 1fr)) !important;
+}
+.av-day-view { display: none; }
+@media (max-width: 720px) {
+    .availability-scroll { display: none !important; }
+    .av-day-view { display: block; }
+}
+.av-tabs { display: flex; gap: 6px; margin: 0 0 12px; }
+.av-tab {
+    flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 2px;
+    padding: 8px 2px; border: 2px solid var(--ink); border-radius: 14px;
+    background: var(--card); color: var(--ink); font: 700 .82rem var(--body); cursor: pointer;
+}
+.av-tab .av-tab-n { font: 500 .62rem var(--mono); color: var(--muted); }
+.av-tab.on { background: var(--blue); color: var(--on-blue); }
+.av-tab.on .av-tab-n { color: var(--on-blue); }
+.av-day-tools { display: flex; gap: 8px; margin: 0 0 12px; }
+.av-day-tools button {
+    flex: 1; padding: 9px 10px; border: 2px solid var(--ink); border-radius: 999px;
+    background: transparent; color: var(--ink); font: 600 .8rem var(--body); cursor: pointer;
+}
+.av-band {
+    margin: 16px 0 8px; font: 600 .7rem var(--mono); text-transform: uppercase;
+    letter-spacing: .08em; color: var(--muted);
+}
+.av-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    width: 100%; min-height: 56px; margin: 0 0 8px; padding: 0 16px;
+    border: 2px solid var(--ink); border-left-width: 8px; border-radius: 14px;
+    background: var(--card); color: var(--ink); font: 600 1rem var(--body);
+    text-align: left; cursor: pointer; transition: transform .12s ease;
+}
+.av-row.morning { border-left-color: var(--orange); }
+.av-row.afternoon { border-left-color: var(--muted); }
+.av-row.evening { border-left-color: var(--blue); }
+.av-row .av-state { font: 500 .74rem var(--mono); color: var(--muted); }
+.av-row.on {
+    background: linear-gradient(135deg, var(--blue), color-mix(in srgb, var(--blue) 55%, var(--pink)));
+    color: var(--on-blue);
+}
+.av-row.on .av-state { color: var(--on-blue); font-weight: 700; }
+.av-row:active { transform: scale(.98); }
