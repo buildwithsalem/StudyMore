@@ -1,9 +1,10 @@
+from db import begin_write, insert_id, INTEGRITY_ERRORS
 from flask import Flask, render_template, request, redirect, url_for, session
 from werkzeug.security import generate_password_hash, check_password_hash
 from search import search_bp
 from duplicate_check import duplicate_bp
 from dashboard import dashboard_bp
-from db import get_db_connection, init_app as init_database_config
+from db import get_db_connection, init_app as init_database_config, DatabaseError, DATABASE_ERRORS
 from matching import (
     find_group_matches,
     find_partner_matches,
@@ -17,18 +18,50 @@ from datetime import datetime, timedelta
 import sqlite3
 from dotenv import load_dotenv
 from pathlib import Path
+from production_config import configure_app, is_production
 
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 app = Flask(__name__)
+configure_app(app)
 # One database setting (app.config["DATABASE"]) shared by every route and blueprint.
 init_database_config(app)
 # Only http(s) meeting links are ever rendered as hrefs, even for old rows.
 app.add_template_filter(safe_meeting_url, "safe_meeting_url")
 
-import os
-app.secret_key = os.environ.get("FLASK_SECRET_KEY", os.urandom(24))
 app.config["MAX_CONTENT_LENGTH"] = 6 * 1024 * 1024
+
+
+@app.before_request
+def clear_production_demo_code():
+    """Never retain development codes in deployed session cookies."""
+    if is_production():
+        session.pop("demo_code", None)
+
+
+@app.get("/healthz")
+def healthz():
+    """Process liveness only; no database access or configuration disclosure."""
+    return {"status": "ok"}, 200, {"Cache-Control": "no-store"}
+
+
+@app.get("/readyz")
+def readyz():
+    try:
+        conn = get_db_connection()
+        conn.execute("SELECT 1 FROM users LIMIT 1").fetchone()
+        if app.config.get("DATABASE_URL"):
+            from migrations import check_schema
+            check_schema(conn)
+        return {"ready": True}, 200, {"Cache-Control": "no-store"}
+    except DATABASE_ERRORS:
+        return {"ready": False}, 503, {"Cache-Control": "no-store"}
+
+
+@app.errorhandler(DatabaseError)
+def database_unavailable(error):
+    app.logger.error("Database request failed.")
+    return {"error": "Database temporarily unavailable. Please try again later."}, 503
 
 @app.errorhandler(413)
 def file_too_large(error):
@@ -68,6 +101,8 @@ app.register_blueprint(notifications_bp)
 
 def init_db(database=None):
     """Create any missing tables in `database` (default: app.config["DATABASE"])."""
+    if is_production() or app.config.get("DATABASE_URL"):
+        raise RuntimeError("Cloud schema initialization requires the Phase 2 migration.")
     conn = sqlite3.connect(database or app.config["DATABASE"])
     try:
         _create_tables(conn)
@@ -224,6 +259,8 @@ def _create_tables(conn):
 
 
 def create_test_user(database=None):
+    if is_production() or app.config.get("DATABASE_URL"):
+        raise RuntimeError("Demo users are disabled in deployed environments.")
     conn = sqlite3.connect(database or app.config["DATABASE"])
     try:
         hashed_password = generate_password_hash("test123")
@@ -352,7 +389,7 @@ def create_group():
             ), 400
 
         connection = get_db_connection()
-        connection.row_factory = sqlite3.Row
+
 
         # The partner is only added when the Study Request match is valid.
         validated_partner_id = None
@@ -389,7 +426,7 @@ def create_group():
 
             validated_partner_id = partner_id
 
-        cursor = connection.execute("""
+        generated_id = insert_id(connection, """
             INSERT INTO study_groups (
                 is_private,
                 creator_user_id,
@@ -422,7 +459,7 @@ def create_group():
             max_members
         ))
 
-        new_group_id = cursor.lastrowid
+        new_group_id = generated_id
 
         # The creator automatically becomes a member.
         connection.execute("""
@@ -435,8 +472,9 @@ def create_group():
         # must never enroll an arbitrary user.
         if validated_partner_id and validated_partner_id != user_id:
             connection.execute("""
-                INSERT OR IGNORE INTO group_memberships (user_id, group_id)
+                INSERT INTO group_memberships (user_id, group_id)
                 VALUES (?, ?)
+                ON CONFLICT(user_id, group_id) DO NOTHING
             """, (validated_partner_id, new_group_id))
 
         # The two Study Requests are no longer active after
@@ -480,7 +518,7 @@ def group_details(group_id):
         return redirect(url_for("login"))
 
     conn = get_db_connection()
-    conn.row_factory = sqlite3.Row
+
 
     group = conn.execute("""
         SELECT *
@@ -550,7 +588,7 @@ def edit_group(group_id):
         return redirect(url_for("login"))
 
     conn = get_db_connection()
-    conn.row_factory = sqlite3.Row
+
 
     group = conn.execute(
         "SELECT * FROM study_groups WHERE id = ?", (group_id,)
@@ -661,8 +699,8 @@ def set_group_status(group_id):
     if new_status not in ("Open", "Completed", "Cancelled"):
         return "Invalid status", 400
 
-    conn = sqlite3.connect("study_more.db")
-    conn.row_factory = sqlite3.Row
+    conn = get_db_connection()
+
 
     group = conn.execute(
         "SELECT * FROM study_groups WHERE id = ?", (group_id,)
@@ -698,7 +736,7 @@ def join_group(group_id):
 
     # 1. Connect to DB
     conn = get_db_connection()
-    conn.row_factory = sqlite3.Row
+
 
     group = conn.execute("""
         SELECT *
@@ -758,7 +796,7 @@ def leave_group(group_id):
 
     # 3. Connect to database
     conn = get_db_connection()
-    conn.row_factory = sqlite3.Row
+
 
     # 4. Check that the group exists
     group = conn.execute("""
@@ -903,7 +941,7 @@ def availability():
     ]
 
     conn = get_db_connection()
-    conn.row_factory = sqlite3.Row
+
     message = None
 
     if request.method == "POST":
@@ -975,7 +1013,7 @@ def schedule():
     user_id = session["user_id"]
 
     conn = get_db_connection()
-    conn.row_factory = sqlite3.Row
+
 
     # Only groups the logged-in student belongs to can be scheduled.
     groups = conn.execute(
@@ -1028,7 +1066,7 @@ def schedule():
 
         elif end_time <= start_time:
             error = "The session end time must be after the start time."
-            
+
         elif datetime.strptime(
             f"{session_date} {start_time}",
             "%Y-%m-%d %H:%M"
@@ -1064,7 +1102,7 @@ def schedule():
                         proposed_dates.append(current_date.strftime("%Y-%m-%d"))
                         current_date += step
 
-                conn.execute("BEGIN IMMEDIATE")
+                begin_write(conn)
 
                 # Get all scheduled sessions from groups this student belongs to.
                 existing_sessions = conn.execute(
@@ -1349,7 +1387,7 @@ def schedule():
         grouped_sessions[session_id]["occurrences"].append(occurrence)
 
     session_groups = list(grouped_sessions.values())
-    
+
 
     conn.close()
 
@@ -1370,7 +1408,7 @@ def cancel_study_session(session_id):
     user_id = session["user_id"]
 
     conn = get_db_connection()
-    conn.row_factory = sqlite3.Row
+
 
     study_session = conn.execute(
         """
@@ -1414,7 +1452,7 @@ def cancel_session_occurrence(session_id, occurrence_date):
     user_id = session["user_id"]
 
     conn = get_db_connection()
-    conn.row_factory = sqlite3.Row
+
 
     study_session = conn.execute(
         """
@@ -1440,11 +1478,12 @@ def cancel_session_occurrence(session_id, occurrence_date):
 
     conn.execute(
         """
-        INSERT OR IGNORE INTO cancelled_session_occurrences (
+        INSERT INTO cancelled_session_occurrences (
             session_id,
             occurrence_date
         )
         VALUES (?, ?)
+        ON CONFLICT(session_id, occurrence_date) DO NOTHING
         """,
         (session_id, occurrence_date)
     )
@@ -1462,7 +1501,7 @@ def edit_study_session(session_id):
     user_id = session["user_id"]
 
     conn = get_db_connection()
-    conn.row_factory = sqlite3.Row
+
 
     study_session = conn.execute(
         """
@@ -1506,7 +1545,7 @@ def update_study_session(session_id):
     ).strip()
 
     conn = get_db_connection()
-    conn.row_factory = sqlite3.Row
+
 
     study_session = conn.execute(
         """
@@ -1596,7 +1635,7 @@ def update_study_session(session_id):
             current_date += step
 
     # Check the user's OTHER sessions for conflicts.
-    conn.execute("BEGIN IMMEDIATE")
+    begin_write(conn)
     existing_sessions = conn.execute(
         """
         SELECT
@@ -1778,7 +1817,7 @@ def edit_session_occurrence(session_id, occurrence_date):
     user_id = session["user_id"]
 
     conn = get_db_connection()
-    conn.row_factory = sqlite3.Row
+
 
     study_session = conn.execute(
         """
@@ -1837,7 +1876,7 @@ def update_session_occurrence(session_id, occurrence_date):
     end_time = request.form.get("end_time", "").strip()
 
     conn = get_db_connection()
-    conn.row_factory = sqlite3.Row
+
 
     study_session = conn.execute(
         """
@@ -1877,7 +1916,7 @@ def update_session_occurrence(session_id, occurrence_date):
             "The study session must be scheduled for a future date and time.",
             400
         )
-    conn.execute("BEGIN IMMEDIATE")
+    begin_write(conn)
 
     # Check the user's other scheduled sessions for a conflict.
     existing_sessions = conn.execute(
@@ -2083,7 +2122,7 @@ def availability_heatmap(group_id):
         return redirect(url_for("login"))
 
     conn = get_db_connection()
-    conn.row_factory = sqlite3.Row
+
 
     user_id = session["user_id"]
 
@@ -2189,7 +2228,7 @@ def study_request():
     ]
 
     conn = get_db_connection()
-    conn.row_factory = sqlite3.Row
+
 
     availability_count = conn.execute(
         """
@@ -2227,7 +2266,7 @@ def study_request():
             )
 
         else:
-            cursor = conn.execute(
+            generated_id = insert_id(conn,
                 """
                 INSERT INTO study_requests
                 (
@@ -2252,7 +2291,7 @@ def study_request():
             )
 
             conn.commit()
-            request_id = cursor.lastrowid
+            request_id = generated_id
             conn.close()
 
             return redirect(
@@ -2279,7 +2318,7 @@ def study_matches(request_id):
     user_id = session["user_id"]
 
     conn = get_db_connection()
-    conn.row_factory = sqlite3.Row
+
 
     # Get this user's Study Request.
     study_request = get_user_study_request(conn, request_id, user_id)
@@ -2310,7 +2349,7 @@ def close_study_request(request_id):
     user_id = session["user_id"]
 
     conn = get_db_connection()
-    conn.row_factory = sqlite3.Row
+
 
     study_request = get_user_study_request(conn, request_id, user_id)
 
@@ -2361,7 +2400,7 @@ def register():
 
 
         conn = get_db_connection()
-        conn.row_factory = sqlite3.Row
+
 
         existing = conn.execute(
             "SELECT id FROM users WHERE email = ?", (email,)
@@ -2375,17 +2414,17 @@ def register():
         ensure_verification_schema(conn)
 
         try:
-            cursor = conn.execute(
+            generated_id = insert_id(conn,
                 "INSERT INTO users (name, email, password, email_verified) "
                 "VALUES (?, ?, ?, 0)",
                 (name, email, hashed_password),
             )
-        except sqlite3.IntegrityError:
+        except INTEGRITY_ERRORS:
             conn.rollback()
             conn.close()
             return register_error("An account with that email already exists", name, email)
         conn.commit()
-        new_user_id = cursor.lastrowid
+        new_user_id = generated_id
 
         email_sent = issue_code(conn, new_user_id, email)
 
@@ -2417,7 +2456,7 @@ def login():
     if request.method == "POST":
         email = request.form.get("email")
         password = request.form.get("password")
-        
+
         if not email or not password:
             return render_template(
                 "login.html",
@@ -2428,7 +2467,7 @@ def login():
         email = email.strip().lower()
 
         conn = get_db_connection()
-        conn.row_factory = sqlite3.Row
+
 
         user = conn.execute(
             "SELECT * FROM users WHERE email = ?", (email,)
@@ -2466,6 +2505,7 @@ def logout():
 
 
 if __name__ == "__main__":
-    init_db()
-    create_test_user()
-    app.run(debug=True)
+    if not is_production() and not app.config.get("DATABASE_URL"):
+        init_db()
+        create_test_user()
+    app.run(debug=app.config["DEBUG"])

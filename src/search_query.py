@@ -1,7 +1,7 @@
 """Query logic for searching and filtering study groups."""
 
 import re
-import sqlite3
+from db import is_postgres, open_connection
 from datetime import datetime
 
 MEETING_TYPES = ("In-Person", "Online", "Hybrid")
@@ -301,6 +301,9 @@ def search_study_groups(conn, raw_filters):
     """
     filters = clean_filters(raw_filters)
     sql, params = build_search_query(filters)
+    if is_postgres(conn):
+        # Exact, reviewed dialect expression only (not a general SQL rewrite).
+        sql = sql.replace(MEETING_PASSED_SQL, "(g.meeting_date || ' ' || g.meeting_time) < to_char(CURRENT_TIMESTAMP AT TIME ZONE 'America/Chicago', 'YYYY-MM-DD HH24:MI:SS')")
 
     cursor = conn.execute(sql, params)
     results = [shape_result_row(row) for row in cursor.fetchall()]
@@ -321,6 +324,4 @@ def search_study_groups(conn, raw_filters):
 
 
 def connect(database_path):
-    conn = sqlite3.connect(database_path)
-    conn.row_factory = sqlite3.Row
-    return conn
+    return open_connection(database_path)

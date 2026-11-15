@@ -1,8 +1,9 @@
 """Semesters: choose the semester you are working in, add course deadlines,
 and see them on a monthly calendar or a whole-semester overview."""
 
+from db import OPERATIONAL_ERRORS, DatabaseError, is_postgres
+
 import calendar
-import sqlite3
 from datetime import date, datetime, timedelta
 
 from flask import Blueprint, redirect, render_template, request, session, url_for
@@ -19,6 +20,8 @@ MAX_NOTES = 300
 
 
 def ensure_semester_schema(conn):
+    if is_postgres(conn):
+        return  # PostgreSQL schema is managed only by the migration command.
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS semesters (
@@ -75,7 +78,9 @@ def user_courses(conn, user_id):
         row = conn.execute(
             "SELECT courses FROM user_profiles WHERE user_id = ?", (user_id,)
         ).fetchone()
-    except sqlite3.OperationalError:
+    except OPERATIONAL_ERRORS as error:
+        if isinstance(error, DatabaseError):
+            raise
         return []
     if row is None or not row["courses"]:
         return []

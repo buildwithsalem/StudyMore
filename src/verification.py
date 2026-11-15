@@ -6,18 +6,19 @@ sent to their @mavs.uta.edu address. That proves they control a UTA mailbox.
 (It does not prove enrollment. That would need UTA single sign-on.)
 
 Sending the code:
-  - Demo mode (default): the code is printed in the terminal running the app.
+  - Local demo mode (opt-in): set STUDYMORE_SHOW_CODES=1 to display codes.
   - Real email: set STUDYMORE_SMTP_HOST (and usually STUDYMORE_SMTP_PORT,
     STUDYMORE_SMTP_USER, STUDYMORE_SMTP_PASSWORD, STUDYMORE_MAIL_FROM).
 
 Accounts that existed before this feature are marked verified.
 """
 
+from db import is_postgres
+
 import os
 import re
 import secrets
 import smtplib
-import sqlite3
 import time
 from email.message import EmailMessage
 
@@ -33,6 +34,7 @@ from flask import (
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from db import get_db_connection
+from production_config import demo_codes_enabled
 
 verification_bp = Blueprint("verification", __name__, template_folder="templates")
 
@@ -49,6 +51,8 @@ def is_uta_email(email):
 
 def ensure_verification_schema(conn):
     """Idempotent. Adds the verified flag and the codes table when missing."""
+    if is_postgres(conn):
+        return  # PostgreSQL schema is managed only by the migration command.
     columns = {row[1] for row in conn.execute("PRAGMA table_info(users)")}
     if columns and "email_verified" not in columns:
         # DEFAULT 1 so everyone who signed up before this feature stays verified.
@@ -85,12 +89,16 @@ def is_strong_password(password):
     )
 def remember_demo_code(code, purpose):
     """Beta testing only: keep the code in the visitor's own session so a banner can show it."""
+    if not demo_codes_enabled():
+        session.pop("demo_code", None)
+        return
     session["demo_code"] = {"code": code, "purpose": purpose}
 
 
 @verification_bp.after_app_request
 def show_demo_code_banner(response):
-    if os.environ.get("STUDYMORE_SHOW_CODES") != "1":
+    if not demo_codes_enabled():
+        session.pop("demo_code", None)
         return response
     info = session.get("demo_code")
     if not info or not (request.endpoint or "").startswith(("verification.", "reset.")):
@@ -116,7 +124,7 @@ def send_code_email(email, code):
     """Returns True if the email was sent, False if sending failed."""
     host = os.environ.get("STUDYMORE_SMTP_HOST")
     if not host:
-        if os.environ.get("STUDYMORE_SHOW_CODES") == "1":
+        if demo_codes_enabled():
             print(f"[StudyMore DEMO] Verification code for {email}: {code}", flush=True)
             remember_demo_code(code, "verification")
             return True

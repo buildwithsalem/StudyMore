@@ -17,7 +17,7 @@ To turn it on, app.py needs two lines next to the search blueprint:
     app.register_blueprint(duplicate_bp)
 """
 
-import sqlite3
+from db import get_db_connection
 
 from flask import Blueprint, current_app, render_template, request, session
 
@@ -36,9 +36,7 @@ CONFIRM_FIELD = "confirm_duplicate"
 
 
 def get_connection():
-    conn = sqlite3.connect(current_app.config.get("DATABASE", DEFAULT_DATABASE))
-    conn.row_factory = sqlite3.Row
-    return conn
+    return get_db_connection()
 
 
 def fields_to_carry_over(form):

@@ -5,3 +5,7 @@ __pycache__/
 *.db
 src/static/uploads/
 .env
+.env.*
+!.env.example
+.vercel/
+public/static/

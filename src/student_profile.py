@@ -1,7 +1,8 @@
 """Student profile page. Registered in app.py as a blueprint."""
 
+from db import OPERATIONAL_ERRORS, DatabaseError, is_postgres
+
 import re
-import sqlite3
 
 from flask import (
     Blueprint,
@@ -61,6 +62,8 @@ def get_connection():
 
 
 def ensure_table(conn):
+    if is_postgres(conn):
+        return  # PostgreSQL schema is managed only by the migration command.
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS user_profiles (
@@ -273,7 +276,9 @@ def save_profile(conn, user_id, values):
 def count_rows(conn, sql, params):
     try:
         return conn.execute(sql, params).fetchone()[0]
-    except sqlite3.OperationalError:
+    except OPERATIONAL_ERRORS as error:
+        if isinstance(error, DatabaseError):
+            raise
         return 0
 
 

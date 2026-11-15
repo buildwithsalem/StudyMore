@@ -26,7 +26,7 @@ Special cases handled here
     read, so no other feature has to update the notifications table.
 """
 
-import sqlite3
+from db import DATABASE_ERRORS, DatabaseError, is_postgres
 from datetime import datetime
 
 from flask import (
@@ -82,6 +82,8 @@ def ensure_notification_schema(conn):
     group_invitations table this module reads). This adds the index that keeps
     one student's list fast.
     """
+    if is_postgres(conn):
+        return  # PostgreSQL schema is managed only by the migration command.
     ensure_invitation_schema(conn)
     conn.execute(
         "CREATE INDEX IF NOT EXISTS notifications_by_user "
@@ -234,7 +236,9 @@ def inject_unread_count():
         conn = get_db_connection()
         ensure_notification_schema(conn)
         return {"unread_notification_count": unread_count(conn, user_id)}
-    except sqlite3.Error:
+    except DATABASE_ERRORS as error:
+        if isinstance(error, DatabaseError):
+            raise
         return {"unread_notification_count": 0}
 
 

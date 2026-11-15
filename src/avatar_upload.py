@@ -1,15 +1,19 @@
+from db import is_postgres
 
 import os
 import secrets
 from pathlib import Path
 
 from flask import current_app, url_for
+from production_config import is_production
 
 AVATAR_DIR = "uploads/avatars"
 MAX_AVATAR_BYTES = 3 * 1024 * 1024  # 3 MB
 
 
 def ensure_avatar_column(conn):
+    if is_postgres(conn):
+        return  # PostgreSQL schema is managed only by the migration command.
     existing = {row[1] for row in conn.execute("PRAGMA table_info(user_profiles)")}
     if "avatar_path" not in existing:
         conn.execute("ALTER TABLE user_profiles ADD COLUMN avatar_path TEXT")
@@ -28,6 +32,8 @@ def image_extension(data):
 
 def save_avatar(upload, user_id):
     """Store an uploaded photo. Returns (relative_path, None) or (None, error)."""
+    if is_production():
+        return None, "Profile photo uploads are unavailable until persistent storage is configured."
     data = upload.read(MAX_AVATAR_BYTES + 1)
     if len(data) > MAX_AVATAR_BYTES:
         return None, "Profile photo must be 3 MB or smaller."
@@ -43,6 +49,8 @@ def save_avatar(upload, user_id):
 
 def delete_avatar_file(path):
     """Remove a stored photo. Ignores anything outside the avatar folder."""
+    if is_production():
+        return
     if not path or not path.startswith(AVATAR_DIR + "/") or ".." in path:
         return
     try:
